@@ -1,3 +1,11 @@
+import os
+import cv2
+import pickle
+from tqdm import tqdm
+from shutil import copyfile
+
+from Helpers.GeneralHelpers import *
+
 # A structure to map fingers to a number, so we're sure the order is preserved.
 FINGER_MAP = {"Wrist": 0,
               "Thumb1": 1,
@@ -74,3 +82,82 @@ def get_right_hand(index, annotations):
     Get all the points from the right hand
     """
     return get_hand_points(index, annotations, 21)
+
+def train_validation_split(data_path, train_path, validation_path, train_samples, validation_samples, sample_type='jpg'):
+    """
+    Process files in data_path of the format xxxxx.sample_type.
+    It will put the samples specified in train_samples into train path, and validation samples into validation path.
+    It is done this way to preserve train and validation sample structure between local and remote machine.
+
+    ALL FILES IN train_path AND validation_path WILL BE DELETED
+    """
+    remove_files_in_folder(train_path)
+    remove_files_in_folder(validation_path)
+    
+    print(f"Doing train/validation split. {len(train_samples)} training samples, {len(validation_samples)} validation samples.")
+    for fi in tqdm(os.listdir(data_path)):
+        if fi.endswith(sample_type):
+            obj = fi.split('.')
+            try:
+                ind = int(obj[0])
+            except:
+                continue
+            if ind in train_samples:
+                copyfile(os.path.join(data_path, fi), os.path.join(train_path, fi))
+                
+            if ind in validation_samples:
+                copyfile(os.path.join(data_path, fi), os.path.join(validation_path, fi))
+
+def create_rhd_annotations(annotations_file,
+                           annotations_out_path,
+                           color_path,
+                           fingers='ALL',
+                           hands_to_annotate='BOTH',
+                           annotate_non_visible=True,
+                           force_new_files=False):
+    """
+    Create annotations for RHD dataset.
+    annotations_file is the file that came with the dataset.
+    annotations_out_path is where the resulting annotations from this will end up.
+    color_path is the path to the color images from the RHD dataset.
+    fingers is an array with the fingers to annotate, or ALL for all fingers.
+    hands is right, left or BOTH.
+    """
+    with open(annotations_file, 'rb') as f:
+        annotations = pickle.load(f)
+
+    if force_new_files:
+        remove_files_in_folder(annotations_out_path)
+
+    print(f"Creating annotations in directory: {color_path}")
+    print(f"Using annotation file: {annotations_file}")
+    print(f"And outputting to: {annotations_out_path}")
+    for fi in tqdm(os.listdir(color_path)):
+        if fi.endswith('png'):
+            anno_file_name = f"{fi.split('.')[0]}.an"
+            anno_file_path = os.path.join(annotations_out_path, anno_file_name)
+            ind = int(fi.split('.')[0])
+            
+            right_hand = get_right_hand(ind, annotations)
+            left_hand = get_left_hand(ind, annotations)
+            
+            with open(anno_file_path, 'w') as write_file:
+                if hands_to_annotate.lower() == 'right':
+                    hands = [right_hand]
+                elif hands_to_annotate.lower() == 'left':
+                    hands = [left_hand]
+                else:
+                    hands = [right_hand, left_hand]
+
+                for h in hands:
+                    if fingers == 'ALL':
+                        for p in h:
+                            visible = p[2] != 0
+                            if visible or annotate_non_visible:
+                                write_file.write(f"{float(p[0])},{float(p[1])}\n")
+                    else:
+                        for f in fingers:
+                            p = h[FINGER_MAP[f]]
+                            visible = p[2] != 0
+                            if visible or annotate_non_visible:
+                                write_file.write(f"{float(p[0])},{float(p[1])}\n")
