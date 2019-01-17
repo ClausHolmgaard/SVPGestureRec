@@ -19,9 +19,10 @@ def closest_anchor_map(x, y,
     """
 
     # Set limit for how far away from the actual anchor offsets are set.
-    x_limit = image_width / anchor_width
-    y_limit = image_height / anchor_height
-    dist_limit = np.sqrt(x_limit**2 + y_limit**2)
+    #x_limit = image_width / anchor_width
+    #y_limit = image_height / anchor_height
+    #dist_limit = np.sqrt(x_limit**2 + y_limit**2)
+    dist_limit = offset_scale
 
     # Initialize result matrix
     res = np.zeros((anchor_width, anchor_height, 3))
@@ -47,12 +48,14 @@ def closest_anchor_map(x, y,
             closest_offset_x = (x - anchor_x) / offset_scale
             closest_offset_y = (y - anchor_y) / offset_scale
             res[cx, cy, 1:] = (closest_offset_x, closest_offset_y)
+
+            res[cx, cy, 0] = 1
         
         # Set label in the closest anchor (where the distance matrix is min_val)
-        closest_x, closest_y = np.where(dist_matrix==min_val)
-        closest_x = closest_x[0]  # If multiple values, the first one is used
-        closest_y = closest_y[0]
-        res[closest_x, closest_y, 0] = 1
+        #closest_x, closest_y = np.where(dist_matrix==min_val)
+        #closest_x = closest_x[0]  # If multiple values, the first one is used
+        #closest_y = closest_y[0]
+        #res[closest_x, closest_y, 0] = 1
         
     return res
 
@@ -175,29 +178,3 @@ def load_data_with_anchors(samples,
         images[c] = im / 255.0
 
     return gt, images
-
-def get_all_points_from_prediction(pred, anchors, threshold=1.0, offset_weight=1.0, num_classes=1, is_label=True):
-    """
-    pred is a prediction map in the shape (ANCHOR_HEIGHT, ANCHOR_WIDTH, 3*num_classes)
-    """
-    # Get all points with a confidence above threshold
-    label_indicies = np.where(pred[:, :, 0] >= threshold)
-    num_points = len(label_indicies[0])
-    points = np.zeros((num_points, 4))
-    
-    # Loop through all anchor points
-    for c, (x_anchor, y_anchor) in enumerate(zip(label_indicies[0], label_indicies[1])):
-        # when anchor location is known, the location of the closest anchor in the actual image can be found
-        x_without_offset, y_without_offset = anchors[x_anchor, y_anchor]
-        
-        # The offset can then be extracted from the labels
-        (x_offset, y_offset) = pred[label_indicies[0], label_indicies[1]][0][1:]
-        if not is_label:
-            x_offset = 2 * (x_offset - 0.5)
-            y_offset = 2 * (y_offset - 0.5)
-        x_offset *= offset_weight
-        y_offset *= offset_weight
-
-        points[c] = (x_without_offset, y_without_offset, x_offset, y_offset)
-    
-    return points

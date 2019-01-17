@@ -1,10 +1,9 @@
 from keras.layers import *
 from keras.models import Model
 from keras.initializers import TruncatedNormal
-from keras.regularizers import l2
 
 
-def create_model(width, height, channels, num_classes, weight_decay=0, keep_prob=0.5):
+def create_model(width, height, channels, num_classes, weight_decay=0, keep_prob=0.5, regularizer=None):
     """
     Same as above, except now we want to detect multiple classes and multiple offsets.
     """
@@ -20,29 +19,29 @@ def create_model(width, height, channels, num_classes, weight_decay=0, keep_prob
                    padding="SAME",
                    use_bias=True,
                    kernel_initializer=TruncatedNormal(stddev=0.01),
-                   kernel_regularizer=l2(weight_decay)
+                   kernel_regularizer=regularizer
                    )(input_layer)
 
     pool1 = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='SAME', name="pool1")(conv1)
 
-    fire1_1 = fl(name="fire1_1", input=pool1, s1x1=32, e1x1=128, e3x3=128, weight_decay=weight_decay)
-    fire1_2 = fl(name="fire1_2", input=fire1_1, s1x1=32, e1x1=128, e3x3=128, weight_decay=weight_decay)
-    fire1_3 = fl(name="fire1_3", input=fire1_2, s1x1=32, e1x1=128, e3x3=128, weight_decay=weight_decay)
-    fire1_4 = fl(name="fire1_4", input=fire1_3, s1x1=32, e1x1=128, e3x3=128, weight_decay=weight_decay)
+    fire1_1 = fl(name="fire1_1", input=pool1,   s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
+    fire1_2 = fl(name="fire1_2", input=fire1_1, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
+    fire1_3 = fl(name="fire1_3", input=fire1_2, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
+    fire1_4 = fl(name="fire1_4", input=fire1_3, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
 
     pool2 = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='SAME', name="pool2")(fire1_4)
 
-    fire2_1 = fl(name="fire2_1", input=pool2, s1x1=48, e1x1=192, e3x3=192, weight_decay=weight_decay)
-    fire2_2 = fl(name="fire2_2", input=fire2_1, s1x1=48, e1x1=192, e3x3=192, weight_decay=weight_decay)
-    fire2_3 = fl(name="fire2_3", input=fire2_2, s1x1=48, e1x1=192, e3x3=192, weight_decay=weight_decay)
-    fire2_4 = fl(name="fire2_4", input=fire2_3, s1x1=48, e1x1=192, e3x3=192, weight_decay=weight_decay)
+    fire2_1 = fl(name="fire2_1", input=pool2,   s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
+    fire2_2 = fl(name="fire2_2", input=fire2_1, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
+    fire2_3 = fl(name="fire2_3", input=fire2_2, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
+    fire2_4 = fl(name="fire2_4", input=fire2_3, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
 
     pool3 = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='SAME', name="pool3")(fire2_4)
 
-    fire3_1 = fl(name="fire3_1", input=pool3, s1x1=64, e1x1=256, e3x3=256, weight_decay=weight_decay)
-    fire3_2 = fl(name="fire3_2", input=fire3_1, s1x1=64, e1x1=256, e3x3=256, weight_decay=weight_decay)
-    fire3_3 = fl(name="fire3_3", input=fire3_2, s1x1=96, e1x1=384, e3x3=384, weight_decay=weight_decay)
-    fire3_4 = fl(name="fire3_4", input=fire3_3, s1x1=96, e1x1=384, e3x3=384, weight_decay=weight_decay)
+    fire3_1 = fl(name="fire3_1", input=pool3,   s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer)
+    fire3_2 = fl(name="fire3_2", input=fire3_1, s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer)
+    fire3_3 = fl(name="fire3_3", input=fire3_2, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
+    fire3_4 = fl(name="fire3_4", input=fire3_3, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
 
     preds = Conv2D(name='preds',
                    filters=3*num_classes, kernel_size=(1, 1), strides=(1, 1),
@@ -161,7 +160,7 @@ def create_loss_function(anchor_width,
         return total_loss
     return loss_function
         
-def fire_layer(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01):
+def fire_layer(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
     """
     wrapper for fire layer constructions
     :param name: name for layer
@@ -182,7 +181,7 @@ def fire_layer(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01):
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
         activation='relu',
-        kernel_regularizer=l2(weight_decay)
+        kernel_regularizer=regularizer
         )(input)
 
     ex1x1 = Conv2D(
@@ -194,7 +193,7 @@ def fire_layer(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01):
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
         activation='relu',
-        kernel_regularizer=l2(weight_decay)
+        kernel_regularizer=regularizer
         )(sq1x1)
 
     ex3x3 = Conv2D(
@@ -205,12 +204,12 @@ def fire_layer(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01):
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
         activation='relu',
-        kernel_regularizer=l2(weight_decay)
+        kernel_regularizer=regularizer
         )(sq1x1)
 
     return concatenate([ex1x1, ex3x3], axis=3)
 
-def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01):
+def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
     """
     wrapper for fire layer constructions, with batchnorm layers
     :param name: name for layer
@@ -231,7 +230,7 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01)
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
         activation=None,
-        kernel_regularizer=l2(weight_decay)
+        kernel_regularizer=regularizer
         )(input)
 
     bn1 = BatchNormalization(name=name+'/bn1')(sq1x1)
@@ -246,7 +245,7 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01)
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
         activation=None,
-        kernel_regularizer=l2(weight_decay)
+        kernel_regularizer=regularizer
         )(act1)
     
     bn2 = BatchNormalization(name=name+'/bn2')(ex1x1)
@@ -260,7 +259,7 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, weight_decay, stdd=0.01)
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
         activation=None,
-        kernel_regularizer=l2(weight_decay)
+        kernel_regularizer=regularizer
         )(act1)
     
     bn3 = BatchNormalization(name=name+'/bn3')(ex3x3)

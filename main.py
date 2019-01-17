@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 from keras import optimizers
 from keras import backend as K
+from keras.regularizers import l2
 from keras.models import load_model
 from keras.utils import multi_gpu_model
 from keras.callbacks import Callback, TensorBoard, ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau
@@ -39,11 +40,11 @@ CHANNELS = 1
 
 LABEL_WEIGHT = 1.0
 OFFSET_LOSS_WEIGHT = 1.0
-OFFSET_SCALE = int(320 / 20) / 2
+OFFSET_SCALE = int(320 / 20)
 
-INITIAL_LR = 1e-3
+INITIAL_LR = 1e-2
 OPT_DECAY = 0
-DECAY_EPOCHES = 100.0
+DECAY_EPOCHES = 200.0
 DECAY_DROP = 0.1
 
 NUM_CLASSES = 42
@@ -58,7 +59,9 @@ NUM_EPOCHS = 200
 LIMIT_SAMPLES = None
 STEPS_EPOCH_SCALE = 1
 
-PRELOAD_DATA = False
+PRELOAD_DATA = True
+
+REGULARIZER = l2(WEIGHT_DECAY)
 
 if CHANNELS == 1:
     grey = True
@@ -99,7 +102,7 @@ create_rhd_annotations(RHD_ANNOTATIONS_FILE,
                        force_new_files=True)
 
 #model = create_model(320, 320, 3)
-model = create_model(WIDTH, HEIGHT, CHANNELS, NUM_CLASSES)
+model = create_model(WIDTH, HEIGHT, CHANNELS, NUM_CLASSES, regularizer=REGULARIZER)
 
 out_shape = model.output_shape
 anchor_width = out_shape[1]
