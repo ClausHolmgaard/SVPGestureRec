@@ -29,6 +29,8 @@ FINGER_MAP = {"Wrist": 0,
               "Pinky3": 19,
               "Pinky4": 20}
 
+FINGER_MAP_INV = {v: k for k, v in FINGER_MAP.items()}
+
 def get_hand_points(index, annotations, offset):
     """
     Array with entry for each point. Each entry is (x, y, visible)

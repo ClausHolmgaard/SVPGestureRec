@@ -44,24 +44,24 @@ OFFSET_SCALE = int(320 / 20)
 
 INITIAL_LR = 1e-2
 OPT_DECAY = 0
-DECAY_EPOCHES = 200.0
+DECAY_EPOCHES = 100.0
 DECAY_DROP = 0.1
 
 NUM_CLASSES = 42
 
-VALIDATION_SPLIT = 0.1
+VALIDATION_SPLIT = 0.01
 
 NUM_GPU = 1
-BATCHSIZE = 32
+BATCHSIZE = 16
 
-NUM_EPOCHS = 200
+NUM_EPOCHS = 75
 
 LIMIT_SAMPLES = None
 STEPS_EPOCH_SCALE = 1
 
 PRELOAD_DATA = True
 
-REGULARIZER = l2(WEIGHT_DECAY)
+REGULARIZER = None #l2(WEIGHT_DECAY)
 
 if CHANNELS == 1:
     grey = True
@@ -91,6 +91,7 @@ create_rhd_annotations(RHD_ANNOTATIONS_FILE,
                        fingers='ALL',
                        hands_to_annotate='BOTH',
                        annotate_non_visible=True,
+                    
                        force_new_files=True)
                 
 create_rhd_annotations(RHD_ANNOTATIONS_FILE,
@@ -179,13 +180,13 @@ def lr_decay(epoch):
 lrate = LearningRateScheduler(lr_decay)
 
 reduce_lr_plateau = ReduceLROnPlateau(monitor='loss', 
-                                      factor=0.5,
-                                      patience=5,
+                                      factor=0.2,
+                                      patience=3,
                                       verbose=1,
                                       mode='auto',
                                       min_delta=0.01,
                                       cooldown=0,
-                                      min_lr=0,)
+                                      min_lr=0)
 
 class LRTensorBoard(TensorBoard):
     def __init__(self,
@@ -251,7 +252,7 @@ model.fit_generator(train_data_gen,
                     steps_per_epoch=steps_epoch,
                     epochs=NUM_EPOCHS,
                     verbose=1,
-                    callbacks=[lrate, lr_tensorboard, checkpoint]
+                    callbacks=[reduce_lr_plateau, lr_tensorboard, checkpoint]
                     )
 
 print("Saving completed model...")
