@@ -215,7 +215,8 @@ def fire_layer(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
 
     ex3x3 = Conv2D(
         name = name + '/expand3x3',
-        filters=e3x3, kernel_size=(3, 3),
+        filters=e3x3,
+        kernel_size=(3, 3),
         strides=(1, 1),
         use_bias=True,
         padding='SAME',
@@ -272,7 +273,8 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
 
     ex3x3 = Conv2D(
         name = name + '/expand3x3',
-        filters=e3x3, kernel_size=(3, 3),
+        filters=e3x3,
+        kernel_size=(3, 3),
         strides=(1, 1),
         use_bias=True,
         padding='SAME',
