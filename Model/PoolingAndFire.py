@@ -54,10 +54,10 @@ def create_model(width, height, channels,
 
     fire4_1 = fl(name="fire4_1", input=pool3,   s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
     fire4_2 = fl(name="fire4_2", input=fire4_1, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
-    #fire4_3 = fl(name="fire4_3", input=fire4_2, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
-    #fire4_4 = fl(name="fire4_4", input=fire4_3, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
+    fire4_3 = fl(name="fire4_3", input=fire4_2, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
+    fire4_4 = fl(name="fire4_4", input=fire4_3, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
 
-    dropout = Dropout(rate=0.5, name='dropout')(fire4_2)
+    #dropout = Dropout(rate=0.5, name='dropout')(fire4_2)
     #bn_out = BatchNormalization(name='bn_out')(fire4_2)
 
     preds = Conv2D(name='preds',
@@ -65,7 +65,7 @@ def create_model(width, height, channels,
                    activation='sigmoid',
                    padding="SAME",
                    kernel_initializer=TruncatedNormal(stddev=0.01)
-                   )(dropout)
+                   )(fire4_4)
 
     return Model(inputs=input_layer, outputs=preds)
 
@@ -215,7 +215,8 @@ def fire_layer(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
 
     ex3x3 = Conv2D(
         name = name + '/expand3x3',
-        filters=e3x3, kernel_size=(3, 3),
+        filters=e3x3,
+        kernel_size=(3, 3),
         strides=(1, 1),
         use_bias=True,
         padding='SAME',
@@ -272,7 +273,8 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
 
     ex3x3 = Conv2D(
         name = name + '/expand3x3',
-        filters=e3x3, kernel_size=(3, 3),
+        filters=e3x3,
+        kernel_size=(3, 3),
         strides=(1, 1),
         use_bias=True,
         padding='SAME',
