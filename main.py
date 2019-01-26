@@ -40,9 +40,9 @@ CHANNELS = 1
 
 LABEL_WEIGHT = 1.0
 OFFSET_LOSS_WEIGHT = 1.0
-OFFSET_SCALE = int(320 / 20)
+#OFFSET_SCALE = int(320 / 20)
 
-INITIAL_LR = 1e-2
+INITIAL_LR = 1e-3
 OPT_DECAY = 0
 DECAY_EPOCHES = 100.0
 DECAY_DROP = 0.1
@@ -52,9 +52,9 @@ NUM_CLASSES = 42
 VALIDATION_SPLIT = 0.01
 
 NUM_GPU = 1
-BATCHSIZE = 16
+BATCHSIZE = 32
 
-NUM_EPOCHS = 75
+NUM_EPOCHS = 200
 
 LIMIT_SAMPLES = None
 STEPS_EPOCH_SCALE = 1
@@ -91,7 +91,6 @@ create_rhd_annotations(RHD_ANNOTATIONS_FILE,
                        fingers='ALL',
                        hands_to_annotate='BOTH',
                        annotate_non_visible=True,
-                    
                        force_new_files=True)
                 
 create_rhd_annotations(RHD_ANNOTATIONS_FILE,
@@ -108,12 +107,15 @@ model = create_model(WIDTH, HEIGHT, CHANNELS, NUM_CLASSES, regularizer=REGULARIZ
 out_shape = model.output_shape
 anchor_width = out_shape[1]
 anchor_height = out_shape[2]
-print(f"Needed anchor shape: {anchor_width}x{anchor_height}")
+print(f"\nNeeded anchor shape: {anchor_width}x{anchor_height}")
+
+offset_scale = int(((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2))
+print(f"Offset scale: {offset_scale}")
 
 l = create_loss_function(anchor_width,
                          anchor_height,
                          LABEL_WEIGHT,
-                         OFFSET_SCALE,
+                         offset_scale,
                          OFFSET_LOSS_WEIGHT,
                          NUM_CLASSES,
                          EPSILON,
@@ -180,7 +182,7 @@ def lr_decay(epoch):
 lrate = LearningRateScheduler(lr_decay)
 
 reduce_lr_plateau = ReduceLROnPlateau(monitor='loss', 
-                                      factor=0.2,
+                                      factor=0.5,
                                       patience=3,
                                       verbose=1,
                                       mode='auto',
@@ -240,7 +242,7 @@ train_data_gen = create_data_generator(TRAIN_DIR,
                                        WIDTH, HEIGHT, CHANNELS,
                                        anchor_width,
                                        anchor_height,
-                                       OFFSET_SCALE,
+                                       offset_scale,  # In which distance additional offets are chosen.
                                        num_classes=NUM_CLASSES,
                                        sample_type='png',
                                        greyscale=grey,
