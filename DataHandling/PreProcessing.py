@@ -36,7 +36,7 @@ def closest_anchor_map(x, y,
         # Create a matrix with all distances between the x and y and anchor coords
         dist_matrix = np.sqrt( (xs - x)**2 + (ys - y)**2 )
         # Get the minimum value
-        min_val = np.min(dist_matrix)
+        #min_val = np.min(dist_matrix)
         # Get all coords where the values in the distance matrix is less than the limit
         closest_xs, closest_ys = np.where(dist_matrix<=dist_limit)
         
