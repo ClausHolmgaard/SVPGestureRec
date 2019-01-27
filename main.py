@@ -109,7 +109,7 @@ anchor_width = out_shape[1]
 anchor_height = out_shape[2]
 print(f"\nNeeded anchor shape: {anchor_width}x{anchor_height}")
 
-offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2)) / 2
+offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2)) #/ 2
 print(f"Offset scale: {offset_scale}")
 
 l = create_loss_function(anchor_width,
@@ -187,8 +187,8 @@ reduce_lr_plateau = ReduceLROnPlateau(monitor='loss',
                                       verbose=1,
                                       mode='auto',
                                       min_delta=0.01,
-                                      cooldown=0,
-                                      min_lr=0)
+                                      cooldown=10,
+                                      min_lr=1e-6)
 
 class LRTensorBoard(TensorBoard):
     def __init__(self,

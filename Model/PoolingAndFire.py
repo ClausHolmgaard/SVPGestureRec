@@ -20,7 +20,7 @@ def create_model(width, height, channels,
     input_layer = Input(shape=(width, height, channels), name="input")
 
     conv1 = Conv2D(name='conv1',
-                   filters=256, kernel_size=(3, 3), strides=(2, 2),
+                   filters=128, kernel_size=(3, 3), strides=(2, 2),
                    activation='relu',
                    padding="SAME",
                    use_bias=True,
@@ -54,10 +54,10 @@ def create_model(width, height, channels,
 
     fire4_1 = fl(name="fire4_1", input=pool3,   s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
     fire4_2 = fl(name="fire4_2", input=fire4_1, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
-    #fire4_3 = fl(name="fire4_3", input=fire4_2, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
-    #fire4_4 = fl(name="fire4_4", input=fire4_3, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
+    fire4_3 = fl(name="fire4_3", input=fire4_2, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
+    fire4_4 = fl(name="fire4_4", input=fire4_3, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
 
-    #dropout = Dropout(rate=0.5, name='dropout')(fire4_2)
+    #dropout = Dropout(rate=0.5, name='dropout')(fire4_4)
     #bn_out = BatchNormalization(name='bn_out')(fire4_2)
 
     preds = Conv2D(name='preds',
@@ -65,7 +65,7 @@ def create_model(width, height, channels,
                    activation='sigmoid',
                    padding="SAME",
                    kernel_initializer=TruncatedNormal(stddev=0.01)
-                   )(fire4_2)
+                   )(fire4_4)
 
     return Model(inputs=input_layer, outputs=preds)
 
@@ -286,8 +286,12 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
     #bn3 = BatchNormalization(name=name+'/bn3')(ex3x3)
     #act3 = Activation('relu', name=name+'/act3')(bn3)
 
+    #drop1 = Dropout(rate=0.5, name=name+'/dropout1')(ex1x1)
+    #drop2 = Dropout(rate=0.5, name=name+'/dropout2')(ex3x3)
+
     #return concatenate([act2, act3], axis=-1)
     return concatenate([ex1x1, ex3x3], axis=-1)
+    #return concatenate([drop1, drop2], axis=-1)
 
 
 def binary_crossentropy(y, y_hat, epsilon):

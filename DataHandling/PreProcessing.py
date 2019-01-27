@@ -143,17 +143,17 @@ def load_data_with_anchors(samples,
 
             for cl in range(num_classes):
                 x1 = x_vals[cl]
-                x2 = x_vals[cl + 21]
+                x2 = x_vals[cl + num_classes]
                 y1 = y_vals[cl]
-                y2 = y_vals[cl + 21]
+                y2 = y_vals[cl + num_classes]
 
                 cam1 = closest_anchor_map(x1, y1, image_width, image_height, anchor_width, anchor_height, anchs, offset_scale)
                 cam2 = closest_anchor_map(x2, y2, image_width, image_height, anchor_width, anchor_height, anchs, offset_scale)
-                cam = cam1 + cam2
+                cam = np.clip(cam1 + cam2, 0, 1.0)
                 gt[c, :, :, cl] = cam[:, :, 0]
                 gt[c, :, :, num_classes+cl*2] = cam[:, :, 1]
                 gt[c, :, :, num_classes+1+cl*2] = cam[:, :, 2]
-                """
+            """
 
             point = 0
             for line_label in line_labels:
@@ -171,10 +171,17 @@ def load_data_with_anchors(samples,
 
                 if x is not None and y is not None:
                     point += 1
-                    
+
         im = cv2.imread(image_file)
         if greyscale:
-            im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).reshape(image_width, image_height, 1)
-        images[c] = im / 255.0
+            im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).astype(np.float32)
+
+        # Mean subtraction
+        im -= np.mean(im, axis=-1)
+        # Normalization
+        im /= np.std(im, axis=-1)
+
+        # Reshape to fit input of model
+        images[c] = im.reshape(image_width, image_height, channels)
 
     return gt, images
