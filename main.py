@@ -17,7 +17,6 @@ from Model.PoolingAndFire import *
 
 
 LOG_DIR = os.path.expanduser("~/logs/SVPGestureRec/")
-#DATA_DIR = os.path.expanduser("~/datasets/Generated")
 DATA_DIR = os.path.expanduser("~/datasets/RHD/RHD_published_v2/training/color")
 TRAIN_DIR = os.path.expanduser("~/datasets/RHD/processed/train")
 VALIDATION_DIR = os.path.expanduser("~/datasets/RHD/processed/validation")
@@ -27,64 +26,88 @@ RHD_ANNOTATIONS_FILE = os.path.expanduser("~/datasets/RHD/RHD_published_v2/train
 MODEL_CHECKPOINT_FILE = os.path.expanduser("~/results/SVPGestureRec/model_checkpoint.h5py")
 MODEL_SAVE_FILE = os.path.expanduser("~/results/SVPGestureRec/model_save_done.h5py")
 
+# Timestamp for tensorboard log dir
 timestamp = '{:%Y-%m-%d_%H_%M}'.format(datetime.datetime.now())
 log_folder = os.path.join(LOG_DIR, timestamp)
 
+# Log funktion stability
 EPSILON = 1e-16
 
-WEIGHT_DECAY = 0
-
+# Input size
 HEIGHT = 320
 WIDTH = 320
 CHANNELS = 1
 
+# label versus offset weight in loss function
 LABEL_WEIGHT = 1.0
 OFFSET_LOSS_WEIGHT = 1.0
-#OFFSET_SCALE = int(320 / 20)
 
+# Learning rate
 INITIAL_LR = 1e-3
+
+# Weight decay in optimizer
 OPT_DECAY = 0
+
+# Weight decay in decay method
 DECAY_EPOCHES = 100.0
 DECAY_DROP = 0.1
 
+# Number of classes
 NUM_CLASSES = 42
 
+# Number of validation samples
 VALIDATION_SPLIT = 0.01
 
+# Number of GPU's
 NUM_GPU = 1
-BATCHSIZE = 32
-
+# Batch size
+BATCHSIZE = 64
+# Epohcs to run for
 NUM_EPOCHS = 200
 
+# Limit the number of samples
 LIMIT_SAMPLES = None
+# Scale the number of steps per epoch
 STEPS_EPOCH_SCALE = 1
 
-PRELOAD_DATA = True
+# Load all data into RAM
+PRELOAD_DATA = False
 
-REGULARIZER = None #l2(WEIGHT_DECAY)
+# Use a reguralizer in layers in model
+REGULARIZER = None
+# Decay for reguralizer
+WEIGHT_DECAY = 0
 
+# Set greyscale
 if CHANNELS == 1:
     grey = True
 else:
     grey = False
 
+# Handle limiting of samples
 if LIMIT_SAMPLES is None:
     num_samples = get_num_samples(DATA_DIR, type_sample='png')
 else:
     num_samples = LIMIT_SAMPLES
 
+# Number of training and test samples
 num_train_samples = int((1-VALIDATION_SPLIT) * num_samples)
 num_validation_samples = int(VALIDATION_SPLIT * num_samples)
 
+# Get all samples and sort them
 all_samples = sorted(get_all_samples(DATA_DIR, sample_type='png'))
+# And grab the training samples
 train_samples = all_samples[:num_train_samples]
+# If we need validation samples, get them
 if num_validation_samples > 0:
     validation_samples = all_samples[-num_validation_samples:]
 else:
     validation_samples = []
 
+# Do the actual split of training and test data
 train_validation_split(DATA_DIR, TRAIN_DIR, VALIDATION_DIR, train_samples, validation_samples, sample_type='png')
 
+# Create annotaions for the training data
 create_rhd_annotations(RHD_ANNOTATIONS_FILE,
                        TRAIN_ANNOTATIONS,
                        TRAIN_DIR,
@@ -92,7 +115,8 @@ create_rhd_annotations(RHD_ANNOTATIONS_FILE,
                        hands_to_annotate='BOTH',
                        annotate_non_visible=True,
                        force_new_files=True)
-                
+
+# Create annotations for validation data
 create_rhd_annotations(RHD_ANNOTATIONS_FILE,
                        VALIDATION_ANNOTATIONS,
                        VALIDATION_DIR,
@@ -101,32 +125,37 @@ create_rhd_annotations(RHD_ANNOTATIONS_FILE,
                        annotate_non_visible=True,
                        force_new_files=True)
 
-#model = create_model(320, 320, 3)
+# Create the mode
 model = create_model(WIDTH, HEIGHT, CHANNELS, NUM_CLASSES, regularizer=REGULARIZER)
 
+# Get output shape from the model
 out_shape = model.output_shape
+# Define anchor shape, based on model output
 anchor_width = out_shape[1]
 anchor_height = out_shape[2]
 print(f"\nNeeded anchor shape: {anchor_width}x{anchor_height}")
 
-offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2)) #/ 2
+# Set offset scale, based on anchor size
+offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2)) / 2
 print(f"Offset scale: {offset_scale}")
 
+# Create the loss function
 l = create_loss_function(anchor_width,
                          anchor_height,
                          LABEL_WEIGHT,
-                         offset_scale,
                          OFFSET_LOSS_WEIGHT,
                          NUM_CLASSES,
                          EPSILON,
                          BATCHSIZE)
 
+# Set choices for the menu, depending on existance of save files
 valid_choices = ['0', '1']
 if os.path.exists(MODEL_CHECKPOINT_FILE):
     valid_choices.append('2')
 if os.path.exists(MODEL_SAVE_FILE):
     valid_choices.append('3')
 
+# Show the menu and get input
 out = None
 print("")
 if len(valid_choices) > 2:
@@ -139,6 +168,9 @@ if len(valid_choices) > 2:
             print("3: Load file from completed run.")
         out = input("Selection: ")
 
+# React on the input
+# Note, when loading a model file, the earlier model is overwritten
+# It must be done this way, due to the loading of the model requiring a reference to the loss function
 if out == '0':
     sys.exit()
 elif out == '1':
@@ -151,17 +183,23 @@ elif out == '3':
     print(f"Loading {MODEL_SAVE_FILE}...")
     model = load_model(MODEL_SAVE_FILE, custom_objects={'loss_function': l})
 
+# Print a summary of the active model
 model.summary()
 
+# Define an optimizer for the model
 opt = optimizers.Adam(lr=INITIAL_LR, decay=OPT_DECAY)
+# Compile the model, to prepare for training
 model.compile(loss=l, optimizer=opt)
 
+# Calculate the number of steps required for an epoch
 print(f"Number of training samples: {num_train_samples}")
 steps_epoch = STEPS_EPOCH_SCALE * num_train_samples // BATCHSIZE
 if steps_epoch < 1:
     steps_epoch = 1
 print(f"Steps per epoch: {steps_epoch}")
 
+# A callback method for printing the actual learning rate.
+# This is when using a decay for the optimizer, as this decay is not reflected in the models learning rate.
 class PrintInfo(Callback):
     def on_epoch_end(self, epoch, logs=None):
         lr = self.model.optimizer.lr
@@ -169,9 +207,11 @@ class PrintInfo(Callback):
         iterations = self.model.optimizer.iterations
         lr_with_decay = lr / (1. + decay * K.cast(iterations, K.dtype(decay)))
         print(f"Learning rate with decay: {K.eval(lr_with_decay)}")
-        #print(f"lr={K.eval(lr)}, decay={K.eval(decay)}")
         print("")
 
+print_info = PrintInfo()
+
+# A callback for doing learning rate decay outside the optimizer
 def lr_decay(epoch):
 	initial_lrate = INITIAL_LR
 	drop = DECAY_DROP
@@ -181,6 +221,7 @@ def lr_decay(epoch):
 
 lrate = LearningRateScheduler(lr_decay)
 
+# Keras method for reducing learning rate, of loss stops improving
 reduce_lr_plateau = ReduceLROnPlateau(monitor='loss', 
                                       factor=0.5,
                                       patience=3,
@@ -190,6 +231,7 @@ reduce_lr_plateau = ReduceLROnPlateau(monitor='loss',
                                       cooldown=10,
                                       min_lr=1e-6)
 
+# Callback for tensorboard with learning rate
 class LRTensorBoard(TensorBoard):
     def __init__(self,
                  log_dir,
@@ -208,8 +250,7 @@ class LRTensorBoard(TensorBoard):
         logs.update({'lr': K.eval(self.model.optimizer.lr)})
         super().on_batch_end(batch, logs)
 
-print_info = PrintInfo()
-
+# Instance of tensorboard without learning rate
 tensorboard = TensorBoard(log_dir=log_folder,
                           histogram_freq=0,
                           batch_size=BATCHSIZE,
@@ -222,12 +263,14 @@ tensorboard = TensorBoard(log_dir=log_folder,
                           embeddings_data=None,
                           update_freq='batch')
 
+# Instance of tensorboard with learning rate
 lr_tensorboard = LRTensorBoard(log_dir=log_folder,
                                histogram_freq=0,
                                batch_size=BATCHSIZE,
                                write_graph=True,
                                update_freq='batch')
 
+# Instance of checkpointing of model
 checkpoint = ModelCheckpoint(MODEL_CHECKPOINT_FILE,
                              monitor='loss',
                              verbose=0,
@@ -236,6 +279,7 @@ checkpoint = ModelCheckpoint(MODEL_CHECKPOINT_FILE,
                              mode='auto',
                              period=1)
 
+# Data generator
 train_data_gen = create_data_generator(TRAIN_DIR,
                                        TRAIN_ANNOTATIONS,
                                        BATCHSIZE,
@@ -250,6 +294,7 @@ train_data_gen = create_data_generator(TRAIN_DIR,
                                        queue_size=100,
                                        preload_all_data=PRELOAD_DATA)
 
+# Start training of model
 model.fit_generator(train_data_gen,
                     steps_per_epoch=steps_epoch,
                     epochs=NUM_EPOCHS,
@@ -257,5 +302,6 @@ model.fit_generator(train_data_gen,
                     callbacks=[reduce_lr_plateau, lr_tensorboard, checkpoint]
                     )
 
+# Save model after training
 print("Saving completed model...")
 model.save(MODEL_SAVE_FILE)

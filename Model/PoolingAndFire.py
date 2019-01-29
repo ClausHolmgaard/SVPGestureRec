@@ -2,16 +2,22 @@ from keras.layers import *
 from keras.models import Model
 from keras.initializers import TruncatedNormal
 
+from Helpers.GeneralHelpers import keras_binary_crossentropy
 
 def create_model(width, height, channels,
                  num_classes,
-                 weight_decay=0,
-                 keep_prob=0.5,
                  regularizer=None,
                  pool_size=(3, 3),
                  pool_stride=(2, 2)):
     """
-    Same as above, except now we want to detect multiple classes and multiple offsets.
+    A Method to create the model.
+    @param width: Width of input image
+    @param height: Height in input image
+    @param channels: Channels in input image
+    @param num_classes: Number of classes
+    @param regularizer: Reguralizer to apply per layer
+    @param pool_size: Kernel size for pooling layers
+    @param pool_stride: Stride length for pooling layer
     """
     # Are reference to the fire layer, so it's easier to switch between different versions.
     fl = fire_layer_batchnorm
@@ -28,31 +34,28 @@ def create_model(width, height, channels,
                    kernel_regularizer=regularizer
                    )(input_layer)
 
-    #fire1_1 = fl(name="fire1_1", input=conv1,   s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
-    #fire1_2 = fl(name="fire1_2", input=fire1_1, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
-    #fire1_3 = fl(name="fire1_3", input=fire1_2, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
-    #fire1_4 = fl(name="fire1_4", input=fire1_3, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
-
     pool1 = MaxPool2D(pool_size=pool_size, strides=pool_stride, padding='SAME', name="pool1")(conv1)
 
     fire1_1 = fl(name="fire1_1", input=pool1,   s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
     fire1_2 = fl(name="fire1_2", input=fire1_1, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
+    fire1_3 = fl(name="fire1_3", input=fire1_2, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
+    fire1_4 = fl(name="fire1_4", input=fire1_3, s1x1=32, e1x1=128, e3x3=128, regularizer=regularizer)
 
-    #fire2_1 = fl(name="fire2_1", input=fire1_2, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
-    #fire2_2 = fl(name="fire2_2", input=fire2_1, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
-    #fire2_3 = fl(name="fire2_3", input=fire2_2, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
-    #fire2_4 = fl(name="fire2_4", input=fire2_3, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
+    pool2 = MaxPool2D(pool_size=pool_size, strides=pool_stride, padding='SAME', name="pool2")(fire1_4)
 
-    pool2 = MaxPool2D(pool_size=pool_size, strides=pool_stride, padding='SAME', name="pool2")(fire1_2)
-
-    fire3_1 = fl(name="fire3_1", input=pool2,   s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer)
-    fire3_2 = fl(name="fire3_2", input=fire3_1, s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer) 
-    #fire3_3 = fl(name="fire3_3", input=fire3_2, s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer)
-    #fire3_4 = fl(name="fire3_4", input=fire3_3, s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer) 
+    fire2_1 = fl(name="fire2_1", input=pool2,   s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
+    fire2_2 = fl(name="fire2_2", input=fire2_1, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
+    fire2_3 = fl(name="fire2_3", input=fire2_2, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer)
+    fire2_4 = fl(name="fire2_4", input=fire2_3, s1x1=48, e1x1=192, e3x3=192, regularizer=regularizer) 
     
-    pool3 = MaxPool2D(pool_size=pool_size, strides=pool_stride, padding='SAME', name="pool3")(fire3_2)
+    pool3 = MaxPool2D(pool_size=pool_size, strides=pool_stride, padding='SAME', name="pool3")(fire2_4)
 
-    fire4_1 = fl(name="fire4_1", input=pool3,   s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
+    fire3_1 = fl(name="fire3_1", input=pool3,   s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer)
+    fire3_2 = fl(name="fire3_2", input=fire3_1, s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer) 
+    fire3_3 = fl(name="fire3_3", input=fire3_2, s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer)
+    fire3_4 = fl(name="fire3_4", input=fire3_3, s1x1=64, e1x1=256, e3x3=256, regularizer=regularizer)
+
+    fire4_1 = fl(name="fire4_1", input=fire3_4, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
     fire4_2 = fl(name="fire4_2", input=fire4_1, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
     fire4_3 = fl(name="fire4_3", input=fire4_2, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
     fire4_4 = fl(name="fire4_4", input=fire4_3, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
@@ -73,26 +76,27 @@ def create_loss_function(anchor_width,
                          anchor_height,
                          label_weight,
                          offset_weight,
-                         offset_loss_weight,
                          num_classes,
                          epsilon,
                          batchsize):
     """
     Create a loss function for the model.
-    label_weight makes label errors weigh mode.
-    offset_weight is not currently used. TODO: Remove offset_weight
-    offset_loss_weight makes offset errors weight more. TODO: Change this to offset_weight
-    num_classes is the number of classes
-    epsilon is a small number for calculation stability in log functions
-    batchsize is batchsize
+
+    @param anchor_width: Width of the anchor grid
+    @param anchor_height: Height of the anchor grid
+    @param label_weight: Weight of the confidence loss
+    @param offset_weight: Weight of the offset loss
+    @param num_classes: Number of classes
+    @param epsilon: Small number to prevent log instability
+    @param batchsize: Batchsize
     """
 
     def loss_function(y_true, y_pred):
         """
         Number of outputfilters is num_classes + 2*num_classes.
         So the predicion output is batchsize x anchorwidth x anchorheight x (3 * num_classes)
-        y_true is ground truth labels
-        y_pred is predicted values
+        @param y_true: Ground truth labels
+        @param y_pred: Predicted values
         """
         # number of labels
         num_labels = num_classes  # TODO: If more labels are needed, this needs changing
@@ -112,7 +116,7 @@ def create_loss_function(anchor_width,
         confidence_m_all = keras_binary_crossentropy(c_labels, c_predictions, epsilon)
 
         # Loss matrix for the correct label
-        confidence_m_label = keras_binary_crossentropy(c_labels, c_predictions, epsilon) * c_labels
+        confidence_m_label = confidence_m_all * c_labels
 
         # Loss matrix for non labels
         confidence_m_nonlabel = confidence_m_all - confidence_m_label
@@ -120,14 +124,22 @@ def create_loss_function(anchor_width,
         # Summing and adding weight to label loss
         c_loss_label = K.sum(
             confidence_m_label
-        ) / num_labels
+        )# / num_labels
         
         # summing and adding weight to non label loss
         c_loss_nonlabel = K.sum(
             confidence_m_nonlabel
-        ) / num_non_labels
+        )# / num_non_labels
         
-        c_loss = c_loss_label * label_weight + c_loss_nonlabel * (1 / label_weight)
+        #c_loss = c_loss_label * label_weight + c_loss_nonlabel * (1 / label_weight)
+        c_loss = (c_loss_label * (num_labels - 1) + c_loss_nonlabel) / (num_labels)
+        #c_loss /= batchsize
+        """
+        c_loss = K.sum(
+            confidence_m_all
+        ) / num_classes #(anchor_width * anchor_height)
+        c_loss *= label_weight
+        """
 
         # And then the offset loss
 
@@ -154,25 +166,21 @@ def create_loss_function(anchor_width,
         mask_offset_y = K.clip(g_y_i + l_y_i, 0, 1.0)
         
         o_loss_x = K.sum(
-            #K.clip(
                 K.square(
                     (true_offset_x - pred_offset_x) * mask_offset_x
                     )
-            #, 0, 1.0)
-        ) / K.sum(mask_offset_x)
+        )# / K.sum(mask_offset_x)
         
         o_loss_y = K.sum(
-            #K.clip(
                 K.square(
                     (true_offset_y - pred_offset_y) * mask_offset_y
                     )
-            #, 0, 1.0)
-        ) / K.sum(mask_offset_y)
+        )# / K.sum(mask_offset_y)
         
-        o_loss = (o_loss_x + o_loss_y) * offset_loss_weight
+        o_loss = (o_loss_x + o_loss_y) * offset_weight / batchsize
         
-        total_loss = K.abs(c_loss) + K.abs(o_loss)  # abs due to rounding errors. TODO: Find a better way to handle rounding errors.
-        total_loss /= batchsize
+        total_loss = K.abs(c_loss) + K.abs(o_loss)  # abs due to rounding errors.
+        #total_loss /= batchsize
 
         return total_loss
     return loss_function
@@ -180,13 +188,12 @@ def create_loss_function(anchor_width,
 def fire_layer(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
     """
     wrapper for fire layer constructions
-    :param name: name for layer
-    :param input: previous layer
-    :param s1x1: number of filters for squeezing
-    :param e1x1: number of filter for expand 1x1
-    :param e3x3: number of filter for expand 3x3
-    :param stdd: standard deviation used for intialization
-    :return: a keras fire layer
+    @param name: name for layer
+    @param input: previous layer
+    @param s1x1: number of filters for squeezing
+    @param e1x1: number of filter for expand 1x1
+    @param e3x3: number of filter for expand 3x3
+    @param stdd: standard deviation used for intialization
     """
 
     sq1x1 = Conv2D(
@@ -229,29 +236,28 @@ def fire_layer(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
 
 def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
     """
-    wrapper for fire layer constructions, with batchnorm layers
-    :param name: name for layer
-    :param input: previous layer
-    :param s1x1: number of filters for squeezing
-    :param e1x1: number of filter for expand 1x1
-    :param e3x3: number of filter for expand 3x3
-    :param stdd: standard deviation used for intialization
-    :return: a keras fire layer
+    wrapper for fire layer constructions, with batchnorm layer
+    @param name: name for layer
+    @param input: previous layer
+    @param s1x1: number of filters for squeezing
+    @param e1x1: number of filter for expand 1x1
+    @param e3x3: number of filter for expand 3x3
+    @param stdd: standard deviation used for intialization
     """
 
-    bn_input = BatchNormalization(name=name+'/bn_input')(input)
+    #bn_input = BatchNormalization(name=name+'/bn_input')(input)
 
     sq1x1 = Conv2D(
         name = name + '/squeeze1x1',
         filters=s1x1,
         kernel_size=(1, 1),
         strides=(1, 1),
-        use_bias=True,
+        use_bias=False,
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
-        activation='relu',
+        activation=None,
         kernel_regularizer=regularizer
-        )(bn_input)
+        )(input)
 
     #bn1 = BatchNormalization(name=name+'/bn1')(sq1x1)
     #act1 = Activation('relu', name=name+'/act1')(bn1)
@@ -261,41 +267,34 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
         filters=e1x1,
         kernel_size=(1, 1),
         strides=(1, 1),
-        use_bias=True,
+        use_bias=False,
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
-        activation='relu',
+        activation=None,
         kernel_regularizer=regularizer
         )(sq1x1)
     
-    #bn2 = BatchNormalization(name=name+'/bn2')(ex1x1)
-    #act2 = Activation('relu', name=name+'/act2')(bn2)
+    bn2 = BatchNormalization(name=name+'/bn2')(ex1x1)
+    act2 = Activation('relu', name=name+'/act2')(bn2)
 
     ex3x3 = Conv2D(
         name = name + '/expand3x3',
         filters=e3x3,
         kernel_size=(3, 3),
         strides=(1, 1),
-        use_bias=True,
+        use_bias=False,
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
-        activation='relu',
+        activation=None,
         kernel_regularizer=regularizer
         )(sq1x1)
     
-    #bn3 = BatchNormalization(name=name+'/bn3')(ex3x3)
-    #act3 = Activation('relu', name=name+'/act3')(bn3)
+    bn3 = BatchNormalization(name=name+'/bn3')(ex3x3)
+    act3 = Activation('relu', name=name+'/act3')(bn3)
 
     #drop1 = Dropout(rate=0.5, name=name+'/dropout1')(ex1x1)
     #drop2 = Dropout(rate=0.5, name=name+'/dropout2')(ex3x3)
 
-    #return concatenate([act2, act3], axis=-1)
-    return concatenate([ex1x1, ex3x3], axis=-1)
+    return concatenate([act2, act3], axis=-1)
+    #return concatenate([ex1x1, ex3x3], axis=-1)
     #return concatenate([drop1, drop2], axis=-1)
-
-
-def binary_crossentropy(y, y_hat, epsilon):
-    return y * (-np.log(y_hat + epsilon)) + (1-y) * (-np.log(1-y_hat + epsilon))
-
-def keras_binary_crossentropy(y, y_hat, epsilon):
-    return y * (-K.log(y_hat + epsilon)) + (1-y) * (-K.log(1-y_hat + epsilon))

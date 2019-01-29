@@ -1,9 +1,15 @@
 import os
 import cv2
 import numpy as np
+from keras import backend as K
 
 
 def get_num_samples(data_dir, type_sample='jpg'):
+    """
+    Get number of files in data_dir of type type_sample.
+    @param data_dir: Directory to get samples from
+    @param type_sample: File extension of samples
+    """
     num_samples = 0
     for f in os.listdir(data_dir):
         end = f.split('.')[1]
@@ -13,6 +19,11 @@ def get_num_samples(data_dir, type_sample='jpg'):
     return num_samples
 
 def get_all_samples(data_dir, sample_type='jpg'):
+    """
+    Get a list of all samples from data_dir with extension sample_type
+    @param data_dir: Directory to get samples from
+    @param type_sample: File extension of samples
+    """
     samples = []
     for fi in os.listdir(data_dir):
         if fi.endswith(sample_type):
@@ -26,6 +37,12 @@ def get_all_samples(data_dir, sample_type='jpg'):
     return samples
 
 def remove_files_in_folder(folder, filetype=None):
+    """
+    Clean all files in a folder.
+    BE CAREFUL.
+    @param folder: Folder to clean files from.
+    @param filetype: If different from None, only clean files of this type
+    """
     for the_file in os.listdir(folder):
         file_path = os.path.join(folder, the_file)
         try:
@@ -38,6 +55,12 @@ def remove_files_in_folder(folder, filetype=None):
             print(e)
 
 def load_image(path, index, grayscale=False):
+    """
+    Zero pad an integer to 5 zeros, and load the png image from path.
+    @param path: path to load file from
+    @param index: Index of file to load
+    @param greyscale: Convert image to greyscale
+    """
     image_name = "%05d.png" % index
     im = cv2.imread(os.path.join(path, image_name))
     if grayscale:
@@ -49,7 +72,12 @@ def load_image(path, index, grayscale=False):
 
 def get_all_points_from_prediction(pred, anchors, threshold=1.0, offset_weight=1.0, num_classes=1, is_label=True):
     """
-    pred is a prediction map in the shape (ANCHOR_HEIGHT, ANCHOR_WIDTH, 3*num_classes)
+    @param pred: Prediction map in the shape (ANCHOR_HEIGHT, ANCHOR_WIDTH, 3*num_classes)
+    @param anchors: Anchor map
+    @param threshold: Confidence threshold for point to be detected
+    @param offset_weight: Scale for offsets
+    @param num_classes: Number of classes
+    @param is_label: Is this a label or prediction
     """
     # Get all points with a confidence above threshold
     label_indicies = np.where(pred[:, :, 0] >= threshold)
@@ -73,3 +101,21 @@ def get_all_points_from_prediction(pred, anchors, threshold=1.0, offset_weight=1
         points[c] = (x_without_offset, y_without_offset, x_offset, y_offset)
     
     return points
+
+def binary_crossentropy(y, y_hat, epsilon):
+    """
+    Binary crossentropy using numpy
+    @param y: prediction
+    @param y_hat: ground truth
+    @param epsilon: Small value for log stability
+    """
+    return y * (-np.log(y_hat + epsilon)) + (1-y) * (-np.log(1-y_hat + epsilon))
+
+def keras_binary_crossentropy(y, y_hat, epsilon):
+    """
+    Binary crossentropy using keras
+    @param y: prediction
+    @param y_hat: ground truth
+    @param epsilon: Small value for log stability
+    """
+    return y * (-K.log(y_hat + epsilon)) + (1-y) * (-K.log(1-y_hat + epsilon))

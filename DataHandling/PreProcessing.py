@@ -14,16 +14,16 @@ def closest_anchor_map(x, y,
     First entry is 1 if the anchor point is closest to true point. Zero otherwise.
     Second is x offset.
     Third is y offset.
-    anchor_coords is is an anchor map created by the get_anchors method.
-    offset_scale is a scale to scale offset down by. Ideally to get all offsets between -1 and 1.
+
+    @param x: x coordinate in image
+    @param y: u corrdinate in image
+    @param image_width: Image width
+    @param image_height: Image height
+    @param anchor_width: Anchor width
+    @param anchor_height: Anchor height
+    @param anchor_coords: An anchor map
+    @param dist_limit: Limit for an anchor point to be valid
     """
-
-    # Set limit for how far away from the actual anchor offsets are set.
-    #x_limit = image_width / anchor_width
-    #y_limit = image_height / anchor_height
-    #dist_limit = np.sqrt(x_limit**2 + y_limit**2)
-    dist_limit = offset_scale
-
     # Initialize result matrix
     res = np.zeros((anchor_width, anchor_height, 3))
 
@@ -35,10 +35,8 @@ def closest_anchor_map(x, y,
 
         # Create a matrix with all distances between the x and y and anchor coords
         dist_matrix = np.sqrt( (xs - x)**2 + (ys - y)**2 )
-        # Get the minimum value
-        #min_val = np.min(dist_matrix)
         # Get all coords where the values in the distance matrix is less than the limit
-        closest_xs, closest_ys = np.where(dist_matrix<=dist_limit)
+        closest_xs, closest_ys = np.where(dist_matrix<=offset_scale)
         
         # Loop through all found values
         for cx, cy in zip(closest_xs, closest_ys):
@@ -51,18 +49,16 @@ def closest_anchor_map(x, y,
 
             res[cx, cy, 0] = 1
         
-        # Set label in the closest anchor (where the distance matrix is min_val)
-        #closest_x, closest_y = np.where(dist_matrix==min_val)
-        #closest_x = closest_x[0]  # If multiple values, the first one is used
-        #closest_y = closest_y[0]
-        #res[closest_x, closest_y, 0] = 1
-        
     return res
 
 def get_anchors(image_width, image_height, anchor_width, anchor_height):
     """
     Generate a anchor_height x anchor_width x 2 matrix.
     Each entry is an (x, y) corrdinate mapping to image coordinates.
+    @param image_widht: Image height
+    @param image_height: Image widht
+    @param anchor_width: Anchor width
+    @param anchor_height: Anchor height
     """
     # Initialize result matrix
     anchors = np.zeros((anchor_width, anchor_height, 2))
@@ -102,60 +98,53 @@ def load_data_with_anchors(samples,
     labels will be:
     anchor_height x anchor_width x (3 * num_classes), 1 confidence score and x,y for offset.
     The first num_classes is confidence scores, then follows the offsets.
+
+    @param samples: Samples to load
+    @param data_dir: Direcotry with data
+    @param anno_dir: Direcotry with annotations
+    @param image_width: Image width
+    @param image_height: Image height
+    @param anchor_width: Anchor width
+    @param anchor_height: Anchor heigt
+    @param offset_scale: Scaling of the offset
+    @param sample_type: Sample file type
+    @param num_classes: Number of classes
+    @param only_images: Only load and return images, dont calculate labels
+    @param greyscale: Convert images to greyscale
+    @param progressbar: Show a progressbar
     """
+    # Set channels depending in greyscale
     if greyscale:
         channels = 1
     else:
         channels = 3
 
+    # Initialize some matricies
     anchs = get_anchors(image_width, image_height, anchor_width, anchor_height)
     gt = np.zeros((len(samples), anchor_width, anchor_height, 3*num_classes))
     images = np.zeros((len(samples), image_width, image_height, channels))
     
+    # Show progressbar, if required
     if progressbar:
         print(f"Loading {len(samples)} samples")
         ite = enumerate(tqdm(samples))
     else:
         ite = enumerate(samples)
 
+    # Iterate through all samples
     for c, s in ite:
         
+        # Grab file paths for current sample
         annotation_file = os.path.join(anno_dir, "%05d.an" % s)
         image_file = os.path.join(data_dir, "%05d.%s" % (s, sample_type))
 
+        # Load labels, if required
         if not only_images:
+            # Get the annotations
             with open(annotation_file, 'r') as f:
                 line_labels = f.readlines()
-            """
-            x_vals = []
-            y_vals = []
-
-            for line_label in line_labels:
-                obj = line_label.split(',')
-                if obj[0] != '':
-                    x = float(obj[0])
-                    y = float(obj[1])
-                else:
-                    x = -1
-                    y = -1
-                x_vals.append(x)
-                y_vals.append(y)
-
-            for cl in range(num_classes):
-                x1 = x_vals[cl]
-                x2 = x_vals[cl + num_classes]
-                y1 = y_vals[cl]
-                y2 = y_vals[cl + num_classes]
-
-                cam1 = closest_anchor_map(x1, y1, image_width, image_height, anchor_width, anchor_height, anchs, offset_scale)
-                cam2 = closest_anchor_map(x2, y2, image_width, image_height, anchor_width, anchor_height, anchs, offset_scale)
-                cam = np.clip(cam1 + cam2, 0, 1.0)
-                gt[c, :, :, cl] = cam[:, :, 0]
-                gt[c, :, :, num_classes+cl*2] = cam[:, :, 1]
-                gt[c, :, :, num_classes+1+cl*2] = cam[:, :, 2]
-            """
-
             point = 0
+            # Split each line, and load values
             for line_label in line_labels:
                 obj = line_label.split(',')
                 if obj[0] != '':
@@ -164,7 +153,10 @@ def load_data_with_anchors(samples,
                 else:
                     x = None
                     y = None
+                
+                # Get an anchor map for the current point
                 cam = closest_anchor_map(x, y, image_width, image_height, anchor_width, anchor_height, anchs, offset_scale)
+                # And save the data as a label
                 gt[c, :, :, point] = cam[:, :, 0]
                 gt[c, :, :, num_classes+point*2] = cam[:, :, 1]
                 gt[c, :, :, num_classes+1+point*2] = cam[:, :, 2]
@@ -172,6 +164,7 @@ def load_data_with_anchors(samples,
                 if x is not None and y is not None:
                     point += 1
 
+        # Load the image, and convert if required
         im = cv2.imread(image_file)
         if greyscale:
             im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).astype(np.float32)

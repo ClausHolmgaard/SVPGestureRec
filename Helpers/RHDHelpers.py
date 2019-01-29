@@ -29,6 +29,7 @@ FINGER_MAP = {"Wrist": 0,
               "Pinky3": 19,
               "Pinky4": 20}
 
+# An inverse map for convinience
 FINGER_MAP_INV = {v: k for k, v in FINGER_MAP.items()}
 
 def get_hand_points(index, annotations, offset):
@@ -36,6 +37,9 @@ def get_hand_points(index, annotations, offset):
     Array with entry for each point. Each entry is (x, y, visible)
     Where visible is 1 for seen points, 0 for hidden.
     This will grab 21 points, starting at offset.
+    @param index: index in annotations
+    @param annotations: annotations loaded from dataset
+    @param offset: 0 or 21, left or right hand.
     """
     # Get the index, and entry in array
     this_index = annotations[index]['uv_vis']
@@ -76,12 +80,16 @@ def get_hand_points(index, annotations, offset):
 def get_left_hand(index, annotations):
     """
     Get all the points for the left hand.
+    @param index: index in annotations
+    @param annotations: annotations loaded from dataset
     """
     return get_hand_points(index, annotations, 0)
 
 def get_right_hand(index, annotations):
     """
     Get all the points from the right hand
+    @param index: index in annotations
+    @param annotations: annotations loaded from dataset
     """
     return get_hand_points(index, annotations, 21)
 
@@ -92,6 +100,12 @@ def train_validation_split(data_path, train_path, validation_path, train_samples
     It is done this way to preserve train and validation sample structure between local and remote machine.
 
     ALL FILES IN train_path AND validation_path WILL BE DELETED
+    @param data_path: Path to data
+    @param train_path: Where to put training data
+    @param validation_path: Where to put validation data
+    @param train_samples: Which samples to put in train_path
+    @param validation_samples: Which samples to put in validation_path
+    @param sample_type: File type of samples
     """
     remove_files_in_folder(train_path)
     remove_files_in_folder(validation_path)
@@ -119,11 +133,11 @@ def create_rhd_annotations(annotations_file,
                            force_new_files=False):
     """
     Create annotations for RHD dataset.
-    annotations_file is the file that came with the dataset.
-    annotations_out_path is where the resulting annotations from this will end up.
-    color_path is the path to the color images from the RHD dataset.
-    fingers is an array with the fingers to annotate, or ALL for all fingers.
-    hands is right, left or BOTH.
+    @param annotations_file: Annotations file that came with the dataset.
+    @param annotations_out_path: Where the resulting annotations from this will end up.
+    @param color_path: Path to the color images that should be annotated.
+    @param fingers: An array with the fingers to annotate, or ALL for all fingers.
+    @param hands: right, left or BOTH.
     """
     with open(annotations_file, 'rb') as f:
         annotations = pickle.load(f)
