@@ -2,9 +2,19 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "taskName": "TaskRun",
+        "taskName": "TaskRemote",
         "type": "shell",
         "command": "./run_remote",
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "taskName": "TaskRun",
+        "type": "shell",
+        "command": "anaconda demo.py",
         "group": "build",
         "presentation": {
           "reveal": "always",

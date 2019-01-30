@@ -124,23 +124,17 @@ def create_loss_function(anchor_width,
         # Summing and adding weight to label loss
         c_loss_label = K.sum(
             confidence_m_label
-        )# / num_labels
+        )
         
         # summing and adding weight to non label loss
         c_loss_nonlabel = K.sum(
             confidence_m_nonlabel
-        )# / num_non_labels
+        )
         
         #c_loss = c_loss_label * label_weight + c_loss_nonlabel * (1 / label_weight)
         c_loss = (c_loss_label * (num_labels - 1) + c_loss_nonlabel) / (num_labels)
-        #c_loss /= batchsize
-        """
-        c_loss = K.sum(
-            confidence_m_all
-        ) / num_classes #(anchor_width * anchor_height)
-        c_loss *= label_weight
-        """
-
+        c_loss /= batchsize
+        
         # And then the offset loss
 
         # Ground truth offsets
@@ -169,18 +163,17 @@ def create_loss_function(anchor_width,
                 K.square(
                     (true_offset_x - pred_offset_x) * mask_offset_x
                     )
-        )# / K.sum(mask_offset_x)
+        )
         
         o_loss_y = K.sum(
                 K.square(
                     (true_offset_y - pred_offset_y) * mask_offset_y
                     )
-        )# / K.sum(mask_offset_y)
+        )
         
         o_loss = (o_loss_x + o_loss_y) * offset_weight / batchsize
         
-        total_loss = K.abs(c_loss) + K.abs(o_loss)  # abs due to rounding errors.
-        #total_loss /= batchsize
+        total_loss = K.abs(c_loss) + K.abs(o_loss)
 
         return total_loss
     return loss_function

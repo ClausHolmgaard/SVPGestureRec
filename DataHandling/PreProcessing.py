@@ -170,9 +170,9 @@ def load_data_with_anchors(samples,
             im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
         # Mean subtraction
-        im -= np.mean(im, axis=-1)
+        im -= np.mean(im)
         # Normalization
-        im /= np.std(im, axis=-1)
+        im /= np.std(im, axis=0)
 
         # Reshape to fit input of model
         images[c] = im.reshape(image_width, image_height, channels)
