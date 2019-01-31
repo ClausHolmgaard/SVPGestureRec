@@ -74,7 +74,7 @@ anchor_height = out_shape[2]
 print(f"\nNeeded anchor shape: {anchor_width}x{anchor_height}")
 
 # Set offset scale, based on anchor size
-offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2))
+offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2)) / 2
 print(f"Offset scale: {offset_scale}")
 
 # Create the loss function
@@ -224,7 +224,7 @@ train_data_gen = create_data_generator(TRAIN_DIR,
                                        WIDTH, HEIGHT, CHANNELS,
                                        anchor_width,
                                        anchor_height,
-                                       offset_scale/2,  # In which distance additional offets are chosen.
+                                       offset_scale,  # In which distance additional offets are chosen.
                                        num_classes=NUM_CLASSES,
                                        sample_type='png',
                                        greyscale=grey,

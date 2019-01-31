@@ -141,7 +141,7 @@
     \def\gt{>}
     \def\lt{<}
     % Document parameters
-    \title{Bilag 2 - RHD Unders?gelse}
+    \title{Bilag 6 - Model Evaluering}
     
     
     
@@ -280,121 +280,331 @@
     
 
     
-    \hypertarget{bilag-2---en-undersuxf8gelse-af-rhd-datasuxe6ttet}{%
-\section{Bilag 2 - En undersøgelse af RHD
-datasættet}\label{bilag-2---en-undersuxf8gelse-af-rhd-datasuxe6ttet}}
+    \hypertarget{bilag-6---model-evaluering}{%
+\section{Bilag 6 - Model Evaluering}\label{bilag-6---model-evaluering}}
 
-fra
-https://lmb.informatik.uni-freiburg.de/resources/datasets/RenderedHandposeDataset.en.html.
+Vi skal have en måde, at evaluere vores model på, dette gøres på to
+måder. - Antal punkter ikke detekteret - Fejl på detekterede punkter
+
+BEMÆRK: Trænings/validerings splittet, samt annoteringerne SKAL være de
+samme som modellen er trænet på.
+
+    Først importeres nødvendige biblioteker.
 
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}1}]:} \PY{k+kn}{import} \PY{n+nn}{os}
-        \PY{k+kn}{import} \PY{n+nn}{cv2}
-        \PY{k+kn}{import} \PY{n+nn}{sys}
-        \PY{k+kn}{import} \PY{n+nn}{pickle}
-        \PY{k+kn}{import} \PY{n+nn}{numpy} \PY{k}{as} \PY{n+nn}{np}
-        \PY{k+kn}{import} \PY{n+nn}{matplotlib}\PY{n+nn}{.}\PY{n+nn}{pyplot} \PY{k}{as} \PY{n+nn}{plt}
+{\color{incolor}In [{\color{incolor}97}]:} \PY{k+kn}{import} \PY{n+nn}{os}
+         \PY{k+kn}{import} \PY{n+nn}{cv2}
+         \PY{k+kn}{import} \PY{n+nn}{sys}
+         \PY{k+kn}{import} \PY{n+nn}{time}
+         \PY{k+kn}{import} \PY{n+nn}{pickle}
+         \PY{k+kn}{import} \PY{n+nn}{numpy} \PY{k}{as} \PY{n+nn}{np}
+         \PY{k+kn}{import} \PY{n+nn}{matplotlib}\PY{n+nn}{.}\PY{n+nn}{pyplot} \PY{k}{as} \PY{n+nn}{plt}
+         \PY{k+kn}{from} \PY{n+nn}{keras}\PY{n+nn}{.}\PY{n+nn}{models} \PY{k}{import} \PY{n}{load\PYZus{}model}
 \end{Verbatim}
 
 
-    Hjælper imports til projektet, disse findes i
-https://github.com/ClausHolmgaard/SVPGestureRec/blob/master/Helpers/RHDHelpers.py
+    Og imports lavet til dette projekt.
 
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}2}]:} \PY{c+c1}{\PYZsh{} Tilføj biblioteket et niveau over til sys.path}
-        \PY{n}{HELPERS\PYZus{}PATH} \PY{o}{=} \PY{n}{os}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{abspath}\PY{p}{(}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{..}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
-        \PY{k}{if} \PY{o+ow}{not} \PY{n}{HELPERS\PYZus{}PATH} \PY{o+ow}{in} \PY{n}{sys}\PY{o}{.}\PY{n}{path}\PY{p}{:}
-            \PY{n}{sys}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{append}\PY{p}{(}\PY{n}{HELPERS\PYZus{}PATH}\PY{p}{)}
-            
-        \PY{k+kn}{from} \PY{n+nn}{Helpers}\PY{n+nn}{.}\PY{n+nn}{RHDHelpers} \PY{k}{import} \PY{o}{*}
+{\color{incolor}In [{\color{incolor}98}]:} \PY{n}{PROGRAM\PYZus{}PATH} \PY{o}{=} \PY{n}{os}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{abspath}\PY{p}{(}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{..}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+         \PY{k}{if} \PY{n}{PROGRAM\PYZus{}PATH} \PY{o+ow}{not} \PY{o+ow}{in} \PY{n}{sys}\PY{o}{.}\PY{n}{path}\PY{p}{:}
+             \PY{n}{sys}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{append}\PY{p}{(}\PY{n}{PROGRAM\PYZus{}PATH}\PY{p}{)}
 \end{Verbatim}
 
 
-    Først, referencer til filer og bibilioteker.
-
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}3}]:} \PY{n}{TRAIN\PYZus{}PATH} \PY{o}{=} \PY{n}{os}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{expanduser}\PY{p}{(}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{\PYZti{}/datasets/RHD/RHD\PYZus{}published\PYZus{}v2/training}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
-        \PY{n}{ANNOTATIONS\PYZus{}FILE} \PY{o}{=} \PY{n}{os}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{join}\PY{p}{(}\PY{n}{TRAIN\PYZus{}PATH}\PY{p}{,} \PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{anno\PYZus{}training.pickle}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
-        \PY{n}{IMAGE\PYZus{}PATH} \PY{o}{=} \PY{n}{os}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{join}\PY{p}{(}\PY{n}{TRAIN\PYZus{}PATH}\PY{p}{,} \PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{color}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+{\color{incolor}In [{\color{incolor}99}]:} \PY{k+kn}{from} \PY{n+nn}{Helpers}\PY{n+nn}{.}\PY{n+nn}{GeneralHelpers} \PY{k}{import} \PY{o}{*}
+         \PY{k+kn}{from} \PY{n+nn}{Helpers}\PY{n+nn}{.}\PY{n+nn}{RHDHelpers} \PY{k}{import} \PY{o}{*}
+         \PY{k+kn}{from} \PY{n+nn}{DataHandling}\PY{n+nn}{.}\PY{n+nn}{PreProcessing} \PY{k}{import} \PY{o}{*}
+         \PY{k+kn}{from} \PY{n+nn}{Model}\PY{n+nn}{.}\PY{n+nn}{PoolingAndFire} \PY{k}{import} \PY{n}{create\PYZus{}loss\PYZus{}function}
+         \PY{k+kn}{from} \PY{n+nn}{ModelConfig} \PY{k}{import} \PY{o}{*}
 \end{Verbatim}
 
 
-    Fra readme filen, ved vi at følgende data er tilgængelig:
-
-Keypoints available: 0: left wrist, 1-4: left thumb {[}tip to palm{]},
-5-8: left index, \ldots{}, 17-20: left pinky, 21: right wrist, 22-25:
-right thumb, \ldots{}, 38-41: right pinky Segmentation masks available:
-0: background, 1: person, 2-4: left thumb {[}tip to palm{]}, 5-7: left
-index, \ldots{}, 14-16: left pinky, 17: palm, 18-20: right thumb,
-\ldots{}, right palm: 33 Hvilket betyder, der er 21 punkter tilgængelig
-på hver hånd.
-
-    Filen der indeholder disse data, kan så åbnes, og læses ind.
+    En reference til modellen.
 
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}4}]:} \PY{k}{with} \PY{n+nb}{open}\PY{p}{(}\PY{n}{ANNOTATIONS\PYZus{}FILE}\PY{p}{,} \PY{l+s+s1}{\PYZsq{}}\PY{l+s+s1}{rb}\PY{l+s+s1}{\PYZsq{}}\PY{p}{)} \PY{k}{as} \PY{n}{f}\PY{p}{:}
-            \PY{n}{annotations} \PY{o}{=} \PY{n}{pickle}\PY{o}{.}\PY{n}{load}\PY{p}{(}\PY{n}{f}\PY{p}{)}
+{\color{incolor}In [{\color{incolor}100}]:} \PY{n}{MODEL\PYZus{}FILE} \PY{o}{=} \PY{n}{os}\PY{o}{.}\PY{n}{path}\PY{o}{.}\PY{n}{expanduser}\PY{p}{(}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{\PYZti{}/results/SVPGestureRec/all\PYZus{}points\PYZus{}test2.h5py}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
 \end{Verbatim}
 
 
-    Lad os vælge nogle index at kigge på.
+    Vi bliver nødt til at angive anker størrelsen her.
 
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}5}]:} \PY{n}{ind} \PY{o}{=} \PY{p}{[}\PY{l+m+mi}{2671}\PY{p}{,} \PY{l+m+mi}{13691}\PY{p}{,} \PY{l+m+mi}{11388}\PY{p}{,} \PY{l+m+mi}{16081}\PY{p}{,} \PY{l+m+mi}{2962}\PY{p}{,} \PY{l+m+mi}{29984}\PY{p}{,} \PY{l+m+mi}{15841}\PY{p}{,} \PY{l+m+mi}{2587}\PY{p}{,} \PY{l+m+mi}{22410}\PY{p}{,} \PY{l+m+mi}{33917}\PY{p}{]}
+{\color{incolor}In [{\color{incolor}101}]:} \PY{n}{ANCHOR\PYZus{}WIDTH} \PY{o}{=} \PY{l+m+mi}{20}
+          \PY{n}{ANCHOR\PYZus{}HEIGHT} \PY{o}{=} \PY{l+m+mi}{20}
 \end{Verbatim}
 
 
-    Det følgende er en function, til at tegne punkterne på et billede.
+    Vi ønske at vise et par eksemple, hvor mange?
 
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}6}]:} \PY{k}{def} \PY{n+nf}{draw\PYZus{}points\PYZus{}on\PYZus{}image}\PY{p}{(}\PY{n}{image}\PY{p}{,} \PY{n}{hand}\PY{p}{,} \PY{n}{only\PYZus{}draw\PYZus{}visible}\PY{o}{=}\PY{k+kc}{False}\PY{p}{)}\PY{p}{:}
-            \PY{k}{for} \PY{n}{p} \PY{o+ow}{in} \PY{n}{hand}\PY{p}{:}
-                \PY{n}{visible} \PY{o}{=} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{2}\PY{p}{]} \PY{o}{!=} \PY{l+m+mi}{0}
-        
-                \PY{k}{if} \PY{o+ow}{not} \PY{n}{only\PYZus{}draw\PYZus{}visible}\PY{p}{:}
-                    \PY{n}{cv2}\PY{o}{.}\PY{n}{circle}\PY{p}{(}\PY{n}{image}\PY{p}{,} \PY{p}{(}\PY{n}{p}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]}\PY{p}{,} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]}\PY{p}{)}\PY{p}{,} \PY{l+m+mi}{1}\PY{p}{,} \PY{p}{(}\PY{l+m+mi}{0}\PY{p}{,} \PY{l+m+mi}{255}\PY{p}{,} \PY{l+m+mi}{0}\PY{p}{)}\PY{p}{,} \PY{n}{thickness}\PY{o}{=}\PY{l+m+mi}{2}\PY{p}{)}
-                \PY{k}{else}\PY{p}{:}
-                    \PY{k}{if} \PY{n}{visible}\PY{p}{:}
-                        \PY{n}{cv2}\PY{o}{.}\PY{n}{circle}\PY{p}{(}\PY{n}{image}\PY{p}{,} \PY{p}{(}\PY{n}{p}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]}\PY{p}{,} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]}\PY{p}{)}\PY{p}{,} \PY{l+m+mi}{1}\PY{p}{,} \PY{p}{(}\PY{l+m+mi}{0}\PY{p}{,} \PY{l+m+mi}{255}\PY{p}{,} \PY{l+m+mi}{0}\PY{p}{)}\PY{p}{,} \PY{n}{thickness}\PY{o}{=}\PY{l+m+mi}{2}\PY{p}{)}
-                
-            \PY{k}{return} \PY{n}{image}
+{\color{incolor}In [{\color{incolor}102}]:} \PY{n}{SAMPELS\PYZus{}TO\PYZus{}SHOW} \PY{o}{=} \PY{l+m+mi}{3}
 \end{Verbatim}
 
 
-    De billeder der skal undersøges indlæses nu.
+    På grund af den måde keras håndtere brugerdefinerede tabs funktioner,
+bliver vi nødt til at have en reference til denne her.
 
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}7}]:} \PY{n}{images} \PY{o}{=} \PY{p}{[}\PY{p}{]}
-        \PY{k}{for} \PY{n}{c}\PY{p}{,} \PY{n}{i} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{ind}\PY{p}{)}\PY{p}{:}
-            \PY{n}{im} \PY{o}{=} \PY{n}{load\PYZus{}image}\PY{p}{(}\PY{n}{IMAGE\PYZus{}PATH}\PY{p}{,} \PY{n}{i}\PY{p}{)}
-            
-            \PY{n}{left\PYZus{}hand} \PY{o}{=} \PY{n}{get\PYZus{}left\PYZus{}hand}\PY{p}{(}\PY{n}{i}\PY{p}{,} \PY{n}{annotations}\PY{p}{)}
-            \PY{n}{right\PYZus{}hand} \PY{o}{=} \PY{n}{get\PYZus{}right\PYZus{}hand}\PY{p}{(}\PY{n}{i}\PY{p}{,} \PY{n}{annotations}\PY{p}{)}
-            
-            \PY{n}{im} \PY{o}{=} \PY{n}{draw\PYZus{}points\PYZus{}on\PYZus{}image}\PY{p}{(}\PY{n}{im}\PY{p}{,} \PY{n}{left\PYZus{}hand}\PY{p}{)}
-            \PY{n}{im} \PY{o}{=} \PY{n}{draw\PYZus{}points\PYZus{}on\PYZus{}image}\PY{p}{(}\PY{n}{im}\PY{p}{,} \PY{n}{right\PYZus{}hand}\PY{p}{)}
-        
-            \PY{n}{images}\PY{o}{.}\PY{n}{append}\PY{p}{(}\PY{n}{im}\PY{p}{)}
+{\color{incolor}In [{\color{incolor}103}]:} \PY{n}{l} \PY{o}{=} \PY{n}{create\PYZus{}loss\PYZus{}function}\PY{p}{(}\PY{n}{ANCHOR\PYZus{}WIDTH}\PY{p}{,} \PY{n}{ANCHOR\PYZus{}HEIGHT}\PY{p}{,}
+                                   \PY{n}{LABEL\PYZus{}WEIGHT}\PY{p}{,}
+                                   \PY{n}{OFFSET\PYZus{}LOSS\PYZus{}WEIGHT}\PY{p}{,}
+                                   \PY{n}{NUM\PYZus{}CLASSES}\PY{p}{,}
+                                   \PY{n}{EPSILON}\PY{p}{,}
+                                   \PY{n}{BATCHSIZE}\PY{p}{)}
 \end{Verbatim}
 
 
-    Billederne plottes så.
+    Modellen kan så indlæses.
 
     \begin{Verbatim}[commandchars=\\\{\}]
-{\color{incolor}In [{\color{incolor}8}]:} \PY{n}{f}\PY{p}{,} \PY{n}{subs} \PY{o}{=} \PY{n}{plt}\PY{o}{.}\PY{n}{subplots}\PY{p}{(}\PY{l+m+mi}{5}\PY{p}{,} \PY{l+m+mi}{2}\PY{p}{,} \PY{n}{figsize}\PY{o}{=}\PY{p}{(}\PY{l+m+mi}{15}\PY{p}{,} \PY{l+m+mi}{40}\PY{p}{)}\PY{p}{)}
-        \PY{n}{subs} \PY{o}{=} \PY{n}{subs}\PY{o}{.}\PY{n}{ravel}\PY{p}{(}\PY{p}{)}
-        
-        \PY{k}{for} \PY{n}{c}\PY{p}{,} \PY{n}{im} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{images}\PY{p}{)}\PY{p}{:}
-            \PY{n}{subs}\PY{p}{[}\PY{n}{c}\PY{p}{]}\PY{o}{.}\PY{n}{imshow}\PY{p}{(}\PY{n}{im}\PY{p}{)}
-            \PY{n}{subs}\PY{p}{[}\PY{n}{c}\PY{p}{]}\PY{o}{.}\PY{n}{set\PYZus{}title}\PY{p}{(}\PY{n}{ind}\PY{p}{[}\PY{n}{c}\PY{p}{]}\PY{p}{)}
+{\color{incolor}In [{\color{incolor}104}]:} \PY{n}{model} \PY{o}{=} \PY{n}{load\PYZus{}model}\PY{p}{(}\PY{n}{MODEL\PYZus{}FILE}\PY{p}{,} \PY{n}{custom\PYZus{}objects}\PY{o}{=}\PY{p}{\PYZob{}}\PY{l+s+s1}{\PYZsq{}}\PY{l+s+s1}{loss\PYZus{}function}\PY{l+s+s1}{\PYZsq{}}\PY{p}{:} \PY{n}{l}\PY{p}{\PYZcb{}}\PY{p}{)}
+\end{Verbatim}
+
+
+    Alle validerings sampels indlæses så.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}105}]:} \PY{n}{samples} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{array}\PY{p}{(}\PY{n}{get\PYZus{}all\PYZus{}samples}\PY{p}{(}\PY{n}{VALIDATION\PYZus{}DIR}\PY{p}{,} \PY{n}{sample\PYZus{}type}\PY{o}{=}\PY{l+s+s1}{\PYZsq{}}\PY{l+s+s1}{png}\PY{l+s+s1}{\PYZsq{}}\PY{p}{)}\PY{p}{)}
+\end{Verbatim}
+
+
+    Data kan nu læses ind.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}106}]:} \PY{n}{labels}\PY{p}{,} \PY{n}{images} \PY{o}{=} \PY{n}{load\PYZus{}data\PYZus{}with\PYZus{}anchors}\PY{p}{(}\PY{n}{samples}\PY{p}{,}
+                                                  \PY{n}{VALIDATION\PYZus{}DIR}\PY{p}{,}
+                                                  \PY{n}{VALIDATION\PYZus{}ANNOTATIONS}\PY{p}{,}
+                                                  \PY{n}{WIDTH}\PY{p}{,} \PY{n}{HEIGHT}\PY{p}{,}
+                                                  \PY{n}{ANCHOR\PYZus{}WIDTH}\PY{p}{,} \PY{n}{ANCHOR\PYZus{}HEIGHT}\PY{p}{,}
+                                                  \PY{n+nb}{int}\PY{p}{(}\PY{n}{WIDTH}\PY{o}{/}\PY{n}{ANCHOR\PYZus{}WIDTH}\PY{p}{)}\PY{o}{/}\PY{l+m+mi}{2}\PY{p}{,}
+                                                  \PY{l+s+s1}{\PYZsq{}}\PY{l+s+s1}{png}\PY{l+s+s1}{\PYZsq{}}\PY{p}{,}
+                                                  \PY{n}{num\PYZus{}classes}\PY{o}{=}\PY{n}{NUM\PYZus{}CLASSES}\PY{p}{,}
+                                                  \PY{n}{greyscale}\PY{o}{=}\PY{k+kc}{True}\PY{p}{)}
+\end{Verbatim}
+
+
+    Der laves en kopi, der kan bruges til at vise resultater på, uden at
+ændrer de oprindelige billeder.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}107}]:} \PY{n}{images\PYZus{}show} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{zeros}\PY{p}{(}\PY{p}{(}\PY{n+nb}{len}\PY{p}{(}\PY{n}{images}\PY{p}{)}\PY{p}{,} \PY{n}{WIDTH}\PY{p}{,} \PY{n}{HEIGHT}\PY{p}{,} \PY{l+m+mi}{3}\PY{p}{)}\PY{p}{,} \PY{n}{dtype}\PY{o}{=}\PY{n}{np}\PY{o}{.}\PY{n}{uint8}\PY{p}{)}
+          
+          \PY{k}{for} \PY{n}{c}\PY{p}{,} \PY{n}{s} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{samples}\PY{p}{)}\PY{p}{:}
+              \PY{n}{images\PYZus{}show}\PY{p}{[}\PY{n}{c}\PY{p}{]} \PY{o}{=} \PY{n}{load\PYZus{}image}\PY{p}{(}\PY{n}{VALIDATION\PYZus{}DIR}\PY{p}{,} \PY{n}{s}\PY{p}{)}
+\end{Verbatim}
+
+
+    Billederne fodres nu til modellen, og der skrives lidt information ud om
+processrings tid.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}108}]:} \PY{n}{res} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{zeros}\PY{p}{(}\PY{n}{labels}\PY{o}{.}\PY{n}{shape}\PY{p}{)}
+          \PY{n}{process\PYZus{}times} \PY{o}{=} \PY{p}{[}\PY{p}{]}
+          \PY{k}{for} \PY{n}{c}\PY{p}{,} \PY{n}{im} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{images}\PY{p}{)}\PY{p}{:}
+              \PY{n}{before} \PY{o}{=} \PY{n}{time}\PY{o}{.}\PY{n}{time}\PY{p}{(}\PY{p}{)}
+              \PY{n}{res}\PY{p}{[}\PY{n}{c}\PY{p}{]} \PY{o}{=} \PY{n}{model}\PY{o}{.}\PY{n}{predict}\PY{p}{(}\PY{n}{im}\PY{o}{.}\PY{n}{reshape}\PY{p}{(}\PY{l+m+mi}{1}\PY{p}{,} \PY{n}{WIDTH}\PY{p}{,} \PY{n}{HEIGHT}\PY{p}{,} \PY{n}{CHANNELS}\PY{p}{)}\PY{p}{)}
+              \PY{n}{process\PYZus{}times}\PY{o}{.}\PY{n}{append}\PY{p}{(}\PY{n}{time}\PY{o}{.}\PY{n}{time}\PY{p}{(}\PY{p}{)} \PY{o}{\PYZhy{}} \PY{n}{before}\PY{p}{)}
+              
+          \PY{n}{process\PYZus{}times} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{array}\PY{p}{(}\PY{n}{process\PYZus{}times}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Average processing time: }\PY{l+s+s2}{\PYZob{}}\PY{l+s+s2}{np.mean(process\PYZus{}times)\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Max processing time: }\PY{l+s+s2}{\PYZob{}}\PY{l+s+s2}{np.max(process\PYZus{}times)\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Min processing time: }\PY{l+s+s2}{\PYZob{}}\PY{l+s+s2}{np.min(process\PYZus{}times)\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Average processing time excepting first: }\PY{l+s+s2}{\PYZob{}}\PY{l+s+s2}{np.mean(process\PYZus{}times[1:])\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+\end{Verbatim}
+
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+Average processing time: 0.029341991086607996
+Max processing time: 1.0957353115081787
+Min processing time: 0.02494072914123535
+Average processing time excepting first: 0.026747360136677167
+
+    \end{Verbatim}
+
+    Vi laver en funktion, til at udtrække punkterne fra resultat matricer.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}109}]:} \PY{k}{def} \PY{n+nf}{get\PYZus{}points}\PY{p}{(}\PY{n}{res\PYZus{}mat}\PY{p}{,} \PY{n}{num\PYZus{}classes}\PY{p}{,} \PY{n}{is\PYZus{}label}\PY{p}{,} \PY{n}{threshold}\PY{p}{)}\PY{p}{:}
+              \PY{n}{result\PYZus{}points} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{zeros}\PY{p}{(}\PY{p}{(}\PY{n}{num\PYZus{}classes}\PY{p}{,} \PY{l+m+mi}{2}\PY{p}{)}\PY{p}{)}
+              \PY{k}{for} \PY{n}{i} \PY{o+ow}{in} \PY{n+nb}{range}\PY{p}{(}\PY{n}{num\PYZus{}classes}\PY{p}{)}\PY{p}{:}
+                  \PY{n}{finger\PYZus{}index} \PY{o}{=} \PY{n}{i}
+                  \PY{k}{if} \PY{n}{finger\PYZus{}index} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{n}{num\PYZus{}classes}\PY{o}{/}\PY{l+m+mi}{2}\PY{p}{:}
+                      \PY{n}{finger\PYZus{}index} \PY{o}{\PYZhy{}}\PY{o}{=} \PY{n}{num\PYZus{}classes}\PY{o}{/}\PY{l+m+mi}{2}
+                  
+                  \PY{n}{single\PYZus{}point\PYZus{}prediction} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{zeros}\PY{p}{(}\PY{p}{(}\PY{n}{ANCHOR\PYZus{}WIDTH}\PY{p}{,} \PY{n}{ANCHOR\PYZus{}HEIGHT}\PY{p}{,} \PY{l+m+mi}{3}\PY{p}{)}\PY{p}{)}
+                  \PY{n}{single\PYZus{}point\PYZus{}prediction}\PY{p}{[}\PY{p}{:}\PY{p}{,} \PY{p}{:}\PY{p}{,} \PY{l+m+mi}{0}\PY{p}{]} \PY{o}{=} \PY{n}{res\PYZus{}mat}\PY{p}{[}\PY{p}{:}\PY{p}{,} \PY{p}{:}\PY{p}{,} \PY{n}{i}\PY{p}{]}
+                  \PY{n}{single\PYZus{}point\PYZus{}prediction}\PY{p}{[}\PY{p}{:}\PY{p}{,} \PY{p}{:}\PY{p}{,} \PY{l+m+mi}{1}\PY{p}{]} \PY{o}{=} \PY{n}{res\PYZus{}mat}\PY{p}{[}\PY{p}{:}\PY{p}{,} \PY{p}{:}\PY{p}{,} \PY{n}{num\PYZus{}classes}\PY{o}{+}\PY{n}{i}\PY{o}{*}\PY{l+m+mi}{2}\PY{p}{]}
+                  \PY{n}{single\PYZus{}point\PYZus{}prediction}\PY{p}{[}\PY{p}{:}\PY{p}{,} \PY{p}{:}\PY{p}{,} \PY{l+m+mi}{2}\PY{p}{]} \PY{o}{=} \PY{n}{res\PYZus{}mat}\PY{p}{[}\PY{p}{:}\PY{p}{,} \PY{p}{:}\PY{p}{,} \PY{n}{num\PYZus{}classes}\PY{o}{+}\PY{l+m+mi}{1}\PY{o}{+}\PY{n}{i}\PY{o}{*}\PY{l+m+mi}{2}\PY{p}{]}
+                  
+                  \PY{n}{anchors} \PY{o}{=} \PY{n}{get\PYZus{}anchors}\PY{p}{(}\PY{n}{WIDTH}\PY{p}{,} \PY{n}{HEIGHT}\PY{p}{,} \PY{n}{ANCHOR\PYZus{}WIDTH}\PY{p}{,} \PY{n}{ANCHOR\PYZus{}HEIGHT}\PY{p}{)}
+          
+                  \PY{n}{label\PYZus{}points} \PY{o}{=} \PY{n}{get\PYZus{}all\PYZus{}points\PYZus{}from\PYZus{}prediction}\PY{p}{(}\PY{n}{single\PYZus{}point\PYZus{}prediction}\PY{p}{,}
+                                                                \PY{n}{anchors}\PY{p}{,}
+                                                                \PY{n}{threshold}\PY{o}{=}\PY{n}{threshold}\PY{p}{,}
+                                                                \PY{n}{offset\PYZus{}weight}\PY{o}{=}\PY{n+nb}{int}\PY{p}{(}\PY{n}{WIDTH}\PY{o}{/}\PY{n}{ANCHOR\PYZus{}WIDTH}\PY{p}{)}\PY{o}{/}\PY{l+m+mi}{2}\PY{p}{,}
+                                                                \PY{n}{is\PYZus{}label}\PY{o}{=}\PY{n}{is\PYZus{}label}\PY{p}{)}
+                  
+                  \PY{n}{x\PYZus{}points} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{zeros}\PY{p}{(}\PY{n+nb}{len}\PY{p}{(}\PY{n}{label\PYZus{}points}\PY{p}{)}\PY{p}{)}
+                  \PY{n}{y\PYZus{}points} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{zeros}\PY{p}{(}\PY{n+nb}{len}\PY{p}{(}\PY{n}{label\PYZus{}points}\PY{p}{)}\PY{p}{)}
+                  \PY{k}{for} \PY{n}{counter}\PY{p}{,} \PY{n}{p} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{label\PYZus{}points}\PY{p}{)}\PY{p}{:}
+                      \PY{n}{x\PYZus{}points}\PY{p}{[}\PY{n}{counter}\PY{p}{]} \PY{o}{=} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{+} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{2}\PY{p}{]}
+                      \PY{n}{y\PYZus{}points}\PY{p}{[}\PY{n}{counter}\PY{p}{]} \PY{o}{=} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{+} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{2}\PY{p}{]}
+                  
+                  \PY{n}{x} \PY{o}{=} \PY{o}{\PYZhy{}}\PY{l+m+mi}{1}
+                  \PY{n}{y} \PY{o}{=} \PY{o}{\PYZhy{}}\PY{l+m+mi}{1}
+                  \PY{k}{if} \PY{n+nb}{len}\PY{p}{(}\PY{n}{label\PYZus{}points}\PY{p}{)} \PY{o}{\PYZgt{}} \PY{l+m+mi}{0}\PY{p}{:}
+                      \PY{n}{x} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{mean}\PY{p}{(}\PY{n}{x\PYZus{}points}\PY{p}{)}
+                      \PY{n}{y} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{mean}\PY{p}{(}\PY{n}{y\PYZus{}points}\PY{p}{)}
+                  
+                  \PY{n}{result\PYZus{}points}\PY{p}{[}\PY{n}{i}\PY{p}{]} \PY{o}{=} \PY{p}{(}\PY{n}{x}\PY{p}{,} \PY{n}{y}\PY{p}{)}
+              \PY{k}{return} \PY{n}{result\PYZus{}points}
+\end{Verbatim}
+
+
+    Denne bruges nu, til at hente alle punkter fra labels
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}110}]:} \PY{n}{label\PYZus{}points} \PY{o}{=} \PY{p}{[}\PY{p}{]}
+          \PY{k}{for} \PY{n}{c}\PY{p}{,} \PY{n}{l} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{labels}\PY{p}{)}\PY{p}{:}
+              \PY{n}{points} \PY{o}{=} \PY{n}{get\PYZus{}points}\PY{p}{(}\PY{n}{labels}\PY{p}{[}\PY{n}{c}\PY{p}{]}\PY{p}{,} \PY{n}{NUM\PYZus{}CLASSES}\PY{p}{,} \PY{k+kc}{True}\PY{p}{,} \PY{l+m+mf}{1.0}\PY{p}{)}
+              \PY{n}{label\PYZus{}points}\PY{o}{.}\PY{n}{append}\PY{p}{(}\PY{n}{points}\PY{p}{)}
+\end{Verbatim}
+
+
+    Og derefter alle punkter fra modellens resultat.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}111}]:} \PY{n}{prediction\PYZus{}points} \PY{o}{=} \PY{p}{[}\PY{p}{]}
+          \PY{k}{for} \PY{n}{c}\PY{p}{,} \PY{n}{r} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{res}\PY{p}{)}\PY{p}{:}
+              \PY{n}{points} \PY{o}{=} \PY{n}{get\PYZus{}points}\PY{p}{(}\PY{n}{res}\PY{p}{[}\PY{n}{c}\PY{p}{]}\PY{p}{,} \PY{n}{NUM\PYZus{}CLASSES}\PY{p}{,} \PY{k+kc}{False}\PY{p}{,} \PY{n}{THRESHOLD}\PY{p}{)}
+              \PY{n}{prediction\PYZus{}points}\PY{o}{.}\PY{n}{append}\PY{p}{(}\PY{n}{points}\PY{p}{)}
+\end{Verbatim}
+
+
+    Der udvælges nogle tilfældige samples der vises
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}112}]:} \PY{n}{sample\PYZus{}show} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{random}\PY{o}{.}\PY{n}{randint}\PY{p}{(}\PY{l+m+mi}{0}\PY{p}{,} \PY{n+nb}{len}\PY{p}{(}\PY{n}{samples}\PY{p}{)}\PY{p}{,} \PY{n}{size}\PY{o}{=}\PY{n}{SAMPELS\PYZus{}TO\PYZus{}SHOW}\PY{p}{)}
+\end{Verbatim}
+
+
+    Punkterne fra labels tegnes derpå med grøn
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}113}]:} \PY{k}{for} \PY{n}{s} \PY{o+ow}{in} \PY{n}{sample\PYZus{}show}\PY{p}{:}
+              \PY{k}{for} \PY{n}{p} \PY{o+ow}{in} \PY{n}{label\PYZus{}points}\PY{p}{[}\PY{n}{s}\PY{p}{]}\PY{p}{:}
+                  \PY{k}{if} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0} \PY{o+ow}{and} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{:}
+                      \PY{n}{cv2}\PY{o}{.}\PY{n}{circle}\PY{p}{(}\PY{n}{images\PYZus{}show}\PY{p}{[}\PY{n}{s}\PY{p}{]}\PY{p}{,} \PY{p}{(}\PY{n+nb}{int}\PY{p}{(}\PY{n}{p}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]}\PY{p}{)}\PY{p}{,} \PY{n+nb}{int}\PY{p}{(}\PY{n}{p}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]}\PY{p}{)}\PY{p}{)}\PY{p}{,} \PY{l+m+mi}{1}\PY{p}{,} \PY{p}{(}\PY{l+m+mi}{0}\PY{p}{,} \PY{l+m+mi}{255}\PY{p}{,} \PY{l+m+mi}{0}\PY{p}{)}\PY{p}{,} \PY{n}{thickness}\PY{o}{=}\PY{l+m+mi}{2}\PY{p}{)}
+\end{Verbatim}
+
+
+    Og forudsigelserne fra modellen med blå
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}114}]:} \PY{k}{for} \PY{n}{s} \PY{o+ow}{in} \PY{n}{sample\PYZus{}show}\PY{p}{:}
+              \PY{k}{for} \PY{n}{p} \PY{o+ow}{in} \PY{n}{prediction\PYZus{}points}\PY{p}{[}\PY{n}{s}\PY{p}{]}\PY{p}{:}
+                  \PY{k}{if} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0} \PY{o+ow}{and} \PY{n}{p}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{:}
+                      \PY{n}{cv2}\PY{o}{.}\PY{n}{circle}\PY{p}{(}\PY{n}{images\PYZus{}show}\PY{p}{[}\PY{n}{s}\PY{p}{]}\PY{p}{,} \PY{p}{(}\PY{n+nb}{int}\PY{p}{(}\PY{n}{p}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]}\PY{p}{)}\PY{p}{,} \PY{n+nb}{int}\PY{p}{(}\PY{n}{p}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]}\PY{p}{)}\PY{p}{)}\PY{p}{,} \PY{l+m+mi}{1}\PY{p}{,} \PY{p}{(}\PY{l+m+mi}{0}\PY{p}{,} \PY{l+m+mi}{0}\PY{p}{,} \PY{l+m+mi}{255}\PY{p}{)}\PY{p}{,} \PY{n}{thickness}\PY{o}{=}\PY{l+m+mi}{2}\PY{p}{)}
+\end{Verbatim}
+
+
+    Dette kan så vises
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}115}]:} \PY{n}{f}\PY{p}{,} \PY{n}{subs} \PY{o}{=} \PY{n}{plt}\PY{o}{.}\PY{n}{subplots}\PY{p}{(}\PY{n+nb}{len}\PY{p}{(}\PY{n}{sample\PYZus{}show}\PY{p}{)}\PY{p}{,} \PY{l+m+mi}{1}\PY{p}{,} \PY{n}{figsize}\PY{o}{=}\PY{p}{(}\PY{l+m+mi}{15}\PY{p}{,} \PY{l+m+mi}{10}\PY{o}{*}\PY{n+nb}{len}\PY{p}{(}\PY{n}{sample\PYZus{}show}\PY{p}{)}\PY{p}{)}\PY{p}{)}
+          \PY{k}{for} \PY{n}{c}\PY{p}{,} \PY{n}{s} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{sample\PYZus{}show}\PY{p}{)}\PY{p}{:}
+              \PY{n}{subs}\PY{p}{[}\PY{n}{c}\PY{p}{]}\PY{o}{.}\PY{n}{imshow}\PY{p}{(}\PY{n}{images\PYZus{}show}\PY{p}{[}\PY{n}{s}\PY{p}{]}\PY{p}{)}
+              \PY{n}{subs}\PY{p}{[}\PY{n}{c}\PY{p}{]}\PY{o}{.}\PY{n}{set\PYZus{}title}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+si}{\PYZob{}samples[s]\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
 \end{Verbatim}
 
 
     \begin{center}
-    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{output_16_0.png}
+    \adjustimage{max size={0.9\linewidth}{0.9\paperheight}}{output_37_0.png}
     \end{center}
     { \hspace*{\fill} \\}
     
+    Vi er nu interesseret i, hvor tit modellen har ret. For det første, når
+der er et punkt, hvor tit forudsiger modellen så at det punkt er
+der(true positive), dette skal helst være så højt som muligt. For det
+andet, hvor tit forudsiger modellen et punkt, der ikke er der(false
+positive), dette tal skal helst være så lavt som muligt.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}116}]:} \PY{n}{num\PYZus{}points} \PY{o}{=} \PY{l+m+mi}{0}
+          \PY{n}{num\PYZus{}predicted\PYZus{}true} \PY{o}{=} \PY{l+m+mi}{0}
+          \PY{n}{num\PYZus{}predicted\PYZus{}false} \PY{o}{=} \PY{l+m+mi}{0}
+          \PY{k}{for} \PY{n}{li} \PY{o+ow}{in} \PY{n+nb}{range}\PY{p}{(}\PY{n+nb}{len}\PY{p}{(}\PY{n}{samples}\PY{p}{)}\PY{p}{)}\PY{p}{:}
+              \PY{k}{for} \PY{n}{pi}\PY{p}{,} \PY{n}{p\PYZus{}label} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{label\PYZus{}points}\PY{p}{[}\PY{n}{li}\PY{p}{]}\PY{p}{)}\PY{p}{:}
+                  \PY{n}{p\PYZus{}prediction} \PY{o}{=} \PY{n}{prediction\PYZus{}points}\PY{p}{[}\PY{n}{li}\PY{p}{]}\PY{p}{[}\PY{n}{pi}\PY{p}{]}
+                  
+                  \PY{k}{if} \PY{n}{p\PYZus{}label}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0} \PY{o+ow}{and} \PY{n}{p\PYZus{}label}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{:}
+                      \PY{n}{num\PYZus{}points} \PY{o}{+}\PY{o}{=} \PY{l+m+mi}{1}
+                  
+                      \PY{k}{if} \PY{n}{p\PYZus{}prediction}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0} \PY{o+ow}{and} \PY{n}{p\PYZus{}prediction}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{:}
+                          \PY{n}{num\PYZus{}predicted\PYZus{}true} \PY{o}{+}\PY{o}{=} \PY{l+m+mi}{1}
+                  \PY{k}{else}\PY{p}{:}
+                      \PY{k}{if} \PY{n}{p\PYZus{}prediction}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0} \PY{o+ow}{and} \PY{n}{p\PYZus{}prediction}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{:}
+                          \PY{n}{num\PYZus{}predicted\PYZus{}false} \PY{o}{+}\PY{o}{=} \PY{l+m+mi}{1}
+          
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Number of points: }\PY{l+s+si}{\PYZob{}num\PYZus{}points\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Number of true positives: }\PY{l+s+si}{\PYZob{}num\PYZus{}predicted\PYZus{}true\PYZcb{}}\PY{l+s+s2}{  \PYZhy{}  }\PY{l+s+s2}{\PYZob{}}\PY{l+s+s2}{num\PYZus{}predicted\PYZus{}true/num\PYZus{}points*100\PYZcb{}}\PY{l+s+s2}{\PYZpc{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Number of false positives: }\PY{l+s+si}{\PYZob{}num\PYZus{}predicted\PYZus{}false\PYZcb{}}\PY{l+s+s2}{  \PYZhy{}  }\PY{l+s+s2}{\PYZob{}}\PY{l+s+s2}{num\PYZus{}predicted\PYZus{}false/num\PYZus{}points*100\PYZcb{}}\PY{l+s+s2}{\PYZpc{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+\end{Verbatim}
+
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+Number of points: 10224
+Number of true positives: 6653  -  65.07237871674492\%
+Number of false positives: 3732  -  36.502347417840376\%
+
+    \end{Verbatim}
+
+    Det sidste vi så kigger på er, hvor nøjagtige de punkter der blev
+detekteret korrekt er. Specifikt kigger vi på den afstand der er mellem
+det egentlige punkt, og det forudsagte. Dette skal helst være så lavt
+som muligt.
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}117}]:} \PY{n}{max\PYZus{}dist} \PY{o}{=} \PY{k+kc}{None}
+          \PY{n}{min\PYZus{}dist} \PY{o}{=} \PY{k+kc}{None}
+          \PY{n}{all\PYZus{}dist} \PY{o}{=} \PY{p}{[}\PY{p}{]}
+          \PY{k}{for} \PY{n}{li} \PY{o+ow}{in} \PY{n+nb}{range}\PY{p}{(}\PY{n+nb}{len}\PY{p}{(}\PY{n}{samples}\PY{p}{)}\PY{p}{)}\PY{p}{:}
+              \PY{k}{for} \PY{n}{pi}\PY{p}{,} \PY{n}{p\PYZus{}label} \PY{o+ow}{in} \PY{n+nb}{enumerate}\PY{p}{(}\PY{n}{label\PYZus{}points}\PY{p}{[}\PY{n}{li}\PY{p}{]}\PY{p}{)}\PY{p}{:}
+                  \PY{n}{p\PYZus{}prediction} \PY{o}{=} \PY{n}{prediction\PYZus{}points}\PY{p}{[}\PY{n}{li}\PY{p}{]}\PY{p}{[}\PY{n}{pi}\PY{p}{]}
+                  
+                  \PY{k}{if} \PY{n}{p\PYZus{}label}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0} \PY{o+ow}{and} \PY{n}{p\PYZus{}label}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{:}
+                      \PY{k}{if} \PY{n}{p\PYZus{}prediction}\PY{p}{[}\PY{l+m+mi}{0}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0} \PY{o+ow}{and} \PY{n}{p\PYZus{}prediction}\PY{p}{[}\PY{l+m+mi}{1}\PY{p}{]} \PY{o}{\PYZgt{}}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{:}
+                          \PY{n}{d} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{linalg}\PY{o}{.}\PY{n}{norm}\PY{p}{(}\PY{n}{p\PYZus{}label} \PY{o}{\PYZhy{}} \PY{n}{p\PYZus{}prediction}\PY{p}{)}
+                          \PY{n}{all\PYZus{}dist}\PY{o}{.}\PY{n}{append}\PY{p}{(}\PY{n}{d}\PY{p}{)}
+                          
+                          \PY{k}{if} \PY{n}{max\PYZus{}dist} \PY{o+ow}{is} \PY{k+kc}{None}\PY{p}{:}
+                              \PY{n}{max\PYZus{}dist} \PY{o}{=} \PY{n}{d}
+                          \PY{k}{elif} \PY{n}{d} \PY{o}{\PYZgt{}} \PY{n}{max\PYZus{}dist}\PY{p}{:}
+                              \PY{n}{max\PYZus{}dist} \PY{o}{=} \PY{n}{d}
+                          
+                          \PY{k}{if} \PY{n}{min\PYZus{}dist} \PY{o+ow}{is} \PY{k+kc}{None}\PY{p}{:}
+                              \PY{n}{min\PYZus{}dist} \PY{o}{=} \PY{n}{d}
+                          \PY{k}{elif} \PY{n}{d} \PY{o}{\PYZlt{}} \PY{n}{min\PYZus{}dist}\PY{p}{:}
+                              \PY{n}{min\PYZus{}dist} \PY{o}{=} \PY{n}{d}
+                              
+          \PY{n}{all\PYZus{}dist} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{array}\PY{p}{(}\PY{n}{all\PYZus{}dist}\PY{p}{)}
+          \PY{n}{avg\PYZus{}error\PYZus{}dist} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{mean}\PY{p}{(}\PY{n}{all\PYZus{}dist}\PY{p}{)}
+                              
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Maximum error distance: }\PY{l+s+si}{\PYZob{}max\PYZus{}dist\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Minimum error distance: }\PY{l+s+si}{\PYZob{}min\PYZus{}dist\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+          \PY{n+nb}{print}\PY{p}{(}\PY{n}{f}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{Average error distance: }\PY{l+s+si}{\PYZob{}avg\PYZus{}error\PYZus{}dist\PYZcb{}}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+\end{Verbatim}
+
+
+    \begin{Verbatim}[commandchars=\\\{\}]
+Maximum error distance: 241.77699730714662
+Minimum error distance: 0.003700830474044583
+Average error distance: 18.74996606351452
+
+    \end{Verbatim}
+
 
     % Add a bibliography block to the postdoc
     
