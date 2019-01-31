@@ -122,19 +122,15 @@ def create_loss_function(anchor_width,
         confidence_m_nonlabel = confidence_m_all - confidence_m_label
         
         # Summing and adding weight to label loss
-        c_loss_label = K.sum(
-            confidence_m_label
-        )
+        c_loss_label = K.sum(confidence_m_label)
         
         # summing and adding weight to non label loss
-        c_loss_nonlabel = K.sum(
-            confidence_m_nonlabel
-        )
+        c_loss_nonlabel = K.sum(confidence_m_nonlabel)
         
         #c_loss = c_loss_label * label_weight + c_loss_nonlabel * (1 / label_weight)
         c_loss = (c_loss_label * (num_labels - 1) + c_loss_nonlabel) / (num_labels)
         c_loss /= batchsize
-        
+
         # And then the offset loss
 
         # Ground truth offsets
@@ -156,23 +152,28 @@ def create_loss_function(anchor_width,
         g_y_i = K.cast(g_y, dtype='float32')
         l_y_i = K.cast(l_y, dtype='float32')
 
+        # Clip the mask. It will consist of 0, 1 or 2. We want 0 or 1.
         mask_offset_x = K.clip(g_x_i + l_x_i, 0, 1.0)
         mask_offset_y = K.clip(g_y_i + l_y_i, 0, 1.0)
         
+        # Sum the x offset loss
         o_loss_x = K.sum(
-                K.square(
-                    (true_offset_x - pred_offset_x) * mask_offset_x
-                    )
+            K.square(
+                (true_offset_x - pred_offset_x) * mask_offset_x
+                )
         )
         
+        # Sum the y offset loss
         o_loss_y = K.sum(
-                K.square(
-                    (true_offset_y - pred_offset_y) * mask_offset_y
-                    )
+            K.square(
+                (true_offset_y - pred_offset_y) * mask_offset_y
+                )
         )
         
+        # Total offset loss
         o_loss = (o_loss_x + o_loss_y) * offset_weight / batchsize
         
+        # Total loss
         total_loss = K.abs(c_loss) + K.abs(o_loss)
 
         return total_loss
@@ -229,7 +230,7 @@ def fire_layer(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
 
 def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=None):
     """
-    wrapper for fire layer constructions, with batchnorm layer
+    wrapper for fire layer constructions, with batchnorm layers
     @param name: name for layer
     @param input: previous layer
     @param s1x1: number of filters for squeezing
@@ -237,9 +238,6 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
     @param e3x3: number of filter for expand 3x3
     @param stdd: standard deviation used for intialization
     """
-
-    #bn_input = BatchNormalization(name=name+'/bn_input')(input)
-
     sq1x1 = Conv2D(
         name = name + '/squeeze1x1',
         filters=s1x1,
@@ -251,9 +249,6 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
         activation=None,
         kernel_regularizer=regularizer
         )(input)
-
-    #bn1 = BatchNormalization(name=name+'/bn1')(sq1x1)
-    #act1 = Activation('relu', name=name+'/act1')(bn1)
 
     ex1x1 = Conv2D(
         name = name + '/expand1x1',
@@ -285,9 +280,4 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
     bn3 = BatchNormalization(name=name+'/bn3')(ex3x3)
     act3 = Activation('relu', name=name+'/act3')(bn3)
 
-    #drop1 = Dropout(rate=0.5, name=name+'/dropout1')(ex1x1)
-    #drop2 = Dropout(rate=0.5, name=name+'/dropout2')(ex3x3)
-
     return concatenate([act2, act3], axis=-1)
-    #return concatenate([ex1x1, ex3x3], axis=-1)
-    #return concatenate([drop1, drop2], axis=-1)
