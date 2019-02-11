@@ -49,7 +49,7 @@ VALIDATION_SPLIT = 0.01
 # Number of GPU's
 NUM_GPU = 1
 # Batch size
-BATCHSIZE = 64
+BATCHSIZE = 32
 # Epohcs to run for
 NUM_EPOCHS = 500
 

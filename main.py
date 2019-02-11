@@ -74,7 +74,7 @@ anchor_height = out_shape[2]
 print(f"\nNeeded anchor shape: {anchor_width}x{anchor_height}")
 
 # Set offset scale, based on anchor size
-offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2))
+offset_scale = (((WIDTH + HEIGHT) / 2) / ((anchor_height + anchor_width) / 2)) / 2
 print(f"Offset scale: {offset_scale}")
 
 # Create the loss function

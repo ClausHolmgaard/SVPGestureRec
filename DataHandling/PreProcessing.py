@@ -172,7 +172,7 @@ def load_data_with_anchors(samples,
         # Mean subtraction
         im -= np.mean(im)
         # Normalization
-        im /= np.std(im, axis=0)
+        im /= np.std(im)
 
         # Reshape to fit input of model
         images[c] = im.reshape(image_width, image_height, channels)

@@ -11,6 +11,7 @@ from Model.PoolingAndFire import create_loss_function
 from DataHandling.PreProcessing import get_anchors
 from Helpers.GeneralHelpers import get_all_points_from_prediction
 
+from numba import jit
 
 class Demo(object):
     """
@@ -99,7 +100,7 @@ class Demo(object):
         # Mean subtraction
         im_pre -= np.mean(im_pre)
         # Normalization
-        im_pre /= np.std(im_pre, axis=-1)
+        im_pre /= np.std(im_pre)
 
         return im_pre.astype(np.float32)
 
@@ -129,14 +130,11 @@ class Demo(object):
         # Make prediction
         res = self.model.predict(im_pre.reshape(1, WIDTH, HEIGHT, CHANNELS))
 
+        # Get anchor matrix
+        anchors = get_anchors(WIDTH, HEIGHT, 20, 20)
+
         # Loop over all points/classes
         for i in range(NUM_CLASSES):
-
-            # Handle which hand it is
-            finger_index = i
-            if finger_index >= NUM_CLASSES / 2:
-                finger_index -= NUM_CLASSES / 2
-            
             # Initialize a prediction matrix for single point
             pred = np.zeros((20, 20, 3))
             
@@ -145,8 +143,6 @@ class Demo(object):
             pred[:, :, 1] = res[0, :, :, NUM_CLASSES+i*2]
             pred[:, :, 2] = res[0, :, :, NUM_CLASSES+1+i*2]
             
-            # Get anchor matrix
-            anchors = get_anchors(WIDTH, HEIGHT, 20, 20)
             # And get all the points from this single prediction
             pred_point = get_all_points_from_prediction(pred,
                                                         anchors,
@@ -180,6 +176,7 @@ class Demo(object):
             # And make prediction
             self.predict_points(im)
 
+            im = cv2.resize(im, dsize=(0, 0), fx=2, fy=2)
             cv2.imshow("Main", im)
 
             # Run till q is pressed
@@ -188,6 +185,6 @@ class Demo(object):
                 break
 
 if __name__ == "__main__":
-    MODEL_FILE = os.path.expanduser("~/results/SVPGestureRec/all_points_test2.h5py")
+    MODEL_FILE = os.path.expanduser("~/results/SVPGestureRec/all_points_last_dropout2.h5py")
     demo = Demo(MODEL_FILE)
     demo.run()

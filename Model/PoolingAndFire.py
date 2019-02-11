@@ -60,15 +60,14 @@ def create_model(width, height, channels,
     fire4_3 = fl(name="fire4_3", input=fire4_2, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
     fire4_4 = fl(name="fire4_4", input=fire4_3, s1x1=96, e1x1=384, e3x3=384, regularizer=regularizer)
 
-    #dropout = Dropout(rate=0.5, name='dropout')(fire4_4)
-    #bn_out = BatchNormalization(name='bn_out')(fire4_2)
+    drop = Dropout(rate=0.5, name='dropout')(fire4_4)
 
     preds = Conv2D(name='preds',
                    filters=3*num_classes, kernel_size=(3, 3), strides=(1, 1),
                    activation='sigmoid',
                    padding="SAME",
                    kernel_initializer=TruncatedNormal(stddev=0.01)
-                   )(fire4_4)
+                   )(drop)
 
     return Model(inputs=input_layer, outputs=preds)
 
@@ -243,10 +242,10 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
         filters=s1x1,
         kernel_size=(1, 1),
         strides=(1, 1),
-        use_bias=False,
+        use_bias=True,
         padding='SAME',
         kernel_initializer=TruncatedNormal(stddev=stdd),
-        activation=None,
+        activation='relu',
         kernel_regularizer=regularizer
         )(input)
 
@@ -280,4 +279,7 @@ def fire_layer_batchnorm(name, input, s1x1, e1x1, e3x3, stdd=0.01, regularizer=N
     bn3 = BatchNormalization(name=name+'/bn3')(ex3x3)
     act3 = Activation('relu', name=name+'/act3')(bn3)
 
-    return concatenate([act2, act3], axis=-1)
+    conc = concatenate([act2, act3], axis=-1)
+    #drop = Dropout(rate=0.5, name=name+'/dropout')(conc)
+
+    return conc
